@@ -4,94 +4,153 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#071015">
-  <meta name="description" content="Alem Müzik Telegram botunun komutlarına, özelliklerine ve bağlantılarına hızlı erişim.">
-  <meta property="og:title" content="Alem Müzik">
-  <meta property="og:description" content="Telegram müzik asistanı, komutlar ve hızlı bağlantılar.">
+  <meta name="description" content="Alem Müzik Mini App ile canlı müzik dinleyin, satranç ve Ludo oynayın.">
+  <meta property="og:title" content="Alem Müzik Mini App">
+  <meta property="og:description" content="Müzik, satranç, Ludo ve bot komutları tek uygulamada.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://adanalimuhendis.github.io/site/">
   <meta property="og:image" content="https://adanalimuhendis.github.io/site/assets/alem-muzik-profile.png">
   <link rel="canonical" href="https://adanalimuhendis.github.io/site/">
-  <title>Alem Müzik</title>
+  <title>Alem Müzik Mini App</title>
   <link rel="stylesheet" href="./styles.css">
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
   <main class="app-shell">
-    <section class="hero">
+    <header class="hero">
       <img class="brand-art" src="./assets/alem-muzik-profile.png" alt="Alem Müzik">
       <div class="hero-copy">
-        <p class="eyebrow">Telegram müzik asistanı</p>
+        <p class="eyebrow">Telegram eğlence merkezi</p>
         <h1>Alem Müzik</h1>
-        <p class="summary">Gruplar, kanallar ve sesli sohbetler için hızlı oynatma, radyo, TV, Spotify, önbellek ve oyun merkezi.</p>
+        <p class="summary">Müziğini aç, arkadaşınla satranç veya Ludo oyna.</p>
       </div>
-    </section>
+    </header>
 
-    <section class="quick-actions" aria-label="Hızlı işlemler">
-      <button class="action primary" data-open="bot">
-        <span class="icon">+</span>
-        <span>Botu Aç</span>
-      </button>
-      <button class="action" data-open="support">
-        <span class="icon">?</span>
-        <span>Destek</span>
-      </button>
-      <button class="action" data-open="channel">
-        <span class="icon">#</span>
-        <span>Kanal</span>
-      </button>
-    </section>
-
-    <section class="status-grid" aria-label="Bot özellikleri">
-      <article>
-        <span class="metric">250</span>
-        <span class="label">Kuyruk sınırı</span>
-      </article>
-      <article>
-        <span class="metric">4</span>
-        <span class="label">Asistan hazır</span>
-      </article>
-      <article>
-        <span class="metric">24/7</span>
-        <span class="label">Watchdog</span>
-      </article>
-    </section>
-
-    <nav class="tabs" aria-label="Bölümler">
-      <button class="tab active" data-tab="commands">Komutlar</button>
-      <button class="tab" data-tab="features">Özellikler</button>
-      <button class="tab" data-tab="links">Bağlantılar</button>
+    <nav class="tabs" aria-label="Mini App bölümleri">
+      <button class="tab active" data-tab="music"><span>♫</span>Müzik</button>
+      <button class="tab" data-tab="chess"><span>♞</span>Satranç</button>
+      <button class="tab" data-tab="ludo"><span>⚄</span>Ludo</button>
+      <button class="tab" data-tab="menu"><span>☰</span>Menü</button>
     </nav>
 
-    <section class="panel active" id="commands">
+    <section class="panel active" id="music">
+      <div class="section-heading">
+        <div>
+          <p class="section-kicker">Canlı yayın</p>
+          <h2>Müzik çalar</h2>
+        </div>
+        <span class="live-badge"><i></i> Hazır</span>
+      </div>
+
+      <article class="player-card">
+        <div class="now-playing">
+          <span class="album-icon">♫</span>
+          <div>
+            <small>Şimdi çalıyor</small>
+            <strong id="track-title">Bir istasyon seç</strong>
+          </div>
+        </div>
+        <audio id="music-player" controls preload="none"></audio>
+        <button class="secondary-button" id="stop-music" type="button">Yayını durdur</button>
+      </article>
+
+      <h3 class="subheading">Radyo istasyonları</h3>
+      <div class="station-grid">
+        <button class="station" data-name="Alem FM" data-stream="https://alemfm.radyotvonline.net/alemfmaac"><b>Alem FM</b><span>Türkçe pop</span></button>
+        <button class="station" data-name="Süper FM" data-stream="https://playerservices.streamtheworld.com/api/livestream-redirect/SUPER_FM_ITUNES.mp3"><b>Süper FM</b><span>Pop hitler</span></button>
+        <button class="station" data-name="Metro FM" data-stream="https://playerservices.streamtheworld.com/api/livestream-redirect/METRO_FM128AAC.aac"><b>Metro FM</b><span>Yabancı pop</span></button>
+        <button class="station" data-name="Baba Radyo" data-stream="https://edge1.radyotvonline.net/shoutcast/play/babaradyo?/;stream.mp3"><b>Baba Radyo</b><span>Arabesk</span></button>
+        <button class="station" data-name="Radyo 45'lik" data-stream="https://stream.radyo45lik.com:4545/stream"><b>Radyo 45'lik</b><span>Nostalji</span></button>
+        <button class="station" data-name="Sesiniz" data-stream="https://kesintisizyayin.com:1656/stream?type=http&amp;nocache=4"><b>Sesiniz</b><span>Karışık</span></button>
+      </div>
+
+      <form class="stream-form" id="stream-form">
+        <label for="stream-url">Kendi HTTPS ses yayınını aç</label>
+        <div>
+          <input id="stream-url" type="url" inputmode="url" placeholder="https://.../stream.mp3" required>
+          <button class="primary-button" type="submit">Oynat</button>
+        </div>
+      </form>
+      <p class="hint">Yayınlar üçüncü taraf radyo sunucularından gelir. Bir istasyon açılmazsa diğerini deneyin.</p>
+    </section>
+
+    <section class="panel" id="chess">
+      <div class="section-heading">
+        <div>
+          <p class="section-kicker">Aynı cihazda 2 oyuncu</p>
+          <h2>Satranç</h2>
+        </div>
+        <span class="turn-badge" id="chess-turn">Beyaz</span>
+      </div>
+      <p class="game-status" id="chess-status" role="status">Beyazın sırası</p>
+      <div class="chess-board" id="chess-board" role="grid" aria-label="Satranç tahtası"></div>
+      <div class="game-actions">
+        <button class="secondary-button" id="chess-undo" type="button">Geri al</button>
+        <button class="secondary-button" id="chess-flip" type="button">Tahtayı çevir</button>
+        <button class="danger-button" id="chess-reset" type="button">Yeni oyun</button>
+      </div>
+      <div class="move-history">
+        <strong>Hamleler</strong>
+        <ol id="chess-history"></ol>
+      </div>
+      <p class="hint">Bir taşa, ardından gitmek istediğin kareye dokun. Piyon terfisinde otomatik olarak vezir seçilir.</p>
+    </section>
+
+    <section class="panel" id="ludo">
+      <div class="section-heading">
+        <div>
+          <p class="section-kicker">Aynı cihazda 2–4 oyuncu</p>
+          <h2>Ludo</h2>
+        </div>
+        <span class="turn-badge red" id="ludo-turn">Kırmızı</span>
+      </div>
+
+      <div class="ludo-toolbar">
+        <label for="ludo-player-count">Oyuncu
+          <select id="ludo-player-count">
+            <option value="2">2 kişi</option>
+            <option value="3">3 kişi</option>
+            <option value="4">4 kişi</option>
+          </select>
+        </label>
+        <button class="danger-button" id="ludo-reset" type="button">Yeni oyun</button>
+      </div>
+
+      <p class="game-status" id="ludo-status" role="status">Kırmızı zar atsın</p>
+      <div class="ludo-board" id="ludo-board" aria-label="Ludo tahtası"></div>
+      <div class="dice-area">
+        <button class="dice" id="ludo-dice" type="button" aria-label="Zar at">⚀</button>
+        <div><strong id="dice-value">Zar at</strong><span>Sonra hareket edecek taşına dokun</span></div>
+      </div>
+      <div class="ludo-players" id="ludo-players"></div>
+      <p class="hint">6 atarak taşını oyuna çıkar. Rakibin taşını yakala ve dört taşını da merkeze ilk ulaştıran ol.</p>
+    </section>
+
+    <section class="panel" id="menu">
+      <div class="section-heading">
+        <div>
+          <p class="section-kicker">Alem Müzik Bot</p>
+          <h2>Hızlı menü</h2>
+        </div>
+      </div>
+      <div class="quick-actions">
+        <button class="action primary" data-open="bot"><span>+</span>Botu aç</button>
+        <button class="action" data-open="support"><span>?</span>Destek</button>
+        <button class="action" data-open="channel"><span>#</span>Kanal</button>
+      </div>
+      <h3 class="subheading">Komutlar</h3>
       <div class="command-list">
-        <button data-copy="/oynat sanatçı - şarkı"><b>/oynat</b><span>Şarkı, YouTube veya Spotify bağlantısı</span></button>
-        <button data-copy="/radyo kralpop"><b>/radyo</b><span>Canlı radyo yayını</span></button>
-        <button data-copy="/tv kanaladı"><b>/tv</b><span>TV ve video yayını</span></button>
-        <button data-copy="/mood slow"><b>/mood</b><span>Tarza göre liste</span></button>
-        <button data-copy="/top"><b>/top</b><span>Popüler liste</span></button>
-        <button data-copy="/liste"><b>/liste</b><span>Sıra listesini gör</span></button>
-        <button data-copy="/atla"><b>/atla</b><span>Sıradaki parçaya geç</span></button>
-        <button data-copy="/indir link"><b>/indir</b><span>Sosyal medya indirme</span></button>
+        <button data-copy="/oynat sanatçı - şarkı"><b>/oynat</b><span>Şarkı veya bağlantı oynat</span></button>
+        <button data-copy="/radyo"><b>/radyo</b><span>Radyo listesini aç</span></button>
+        <button data-copy="/tv"><b>/tv</b><span>TV listesini aç</span></button>
+        <button data-copy="/liste"><b>/liste</b><span>Sırayı görüntüle</span></button>
+        <button data-copy="/atla"><b>/atla</b><span>Sonraki parçaya geç</span></button>
+        <button data-copy="/indir link"><b>/indir</b><span>Sosyal medya indir</span></button>
       </div>
-    </section>
-
-    <section class="panel" id="features">
-      <div class="feature-list">
-        <div><span>♪</span><p><b>Müzik oynatma</b>Önbellek, disk ve YouTube yedeğiyle kaynak bulma.</p></div>
-        <div><span>▶</span><p><b>Radyo ve TV</b>Sesli sohbetlerde canlı yayın desteği.</p></div>
-        <div><span>☁</span><p><b>Önbellek sistemi</b>Medya bilgisi, süre ve boyut takibi.</p></div>
-        <div><span>⚡</span><p><b>Hızlı indirme</b>Aria2 destekli çok bağlantılı indirme.</p></div>
-        <div><span>▣</span><p><b>Oyunlar</b>Tabu, kelime, XO ve eğlence komutları.</p></div>
-        <div><span>✓</span><p><b>Güvenli çalışma</b>Watchdog, devam ettirme ve günlük kontrolleri.</p></div>
-      </div>
-    </section>
-
-    <section class="panel" id="links">
+      <h3 class="subheading">Bağlantılar</h3>
       <div class="link-list">
-        <button data-open="support">Destek grubuna git</button>
-        <button data-open="channel">Alem Müzik kanalını aç</button>
         <button data-open="community">Topluluk kanalını aç</button>
-        <button data-open="bot">Bot sohbetini aç</button>
+        <button data-open="support">Destek grubuna git</button>
       </div>
     </section>
 
@@ -99,5 +158,7 @@
   </main>
 
   <script src="./app.js"></script>
+  <script type="module" src="./chess-game.js"></script>
+  <script type="module" src="./ludo-game.js"></script>
 </body>
 </html>
