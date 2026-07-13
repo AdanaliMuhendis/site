@@ -54,30 +54,24 @@
         <button class="secondary-button" id="stop-music" type="button">Yayını durdur</button>
       </article>
 
-      <h3 class="subheading">Radyo istasyonları</h3>
-      <div class="station-grid">
-        <button class="station" data-name="Alem FM" data-stream="https://alemfm.radyotvonline.net/alemfmaac"><b>Alem FM</b><span>Türkçe pop</span></button>
-        <button class="station" data-name="Süper FM" data-stream="https://playerservices.streamtheworld.com/api/livestream-redirect/SUPER_FM_ITUNES.mp3"><b>Süper FM</b><span>Pop hitler</span></button>
-        <button class="station" data-name="Metro FM" data-stream="https://playerservices.streamtheworld.com/api/livestream-redirect/METRO_FM128AAC.aac"><b>Metro FM</b><span>Yabancı pop</span></button>
-        <button class="station" data-name="Baba Radyo" data-stream="https://edge1.radyotvonline.net/shoutcast/play/babaradyo?/;stream.mp3"><b>Baba Radyo</b><span>Arabesk</span></button>
-        <button class="station" data-name="Radyo 45'lik" data-stream="https://stream.radyo45lik.com:4545/stream"><b>Radyo 45'lik</b><span>Nostalji</span></button>
-        <button class="station" data-name="Sesiniz" data-stream="https://kesintisizyayin.com:1656/stream?type=http&amp;nocache=4"><b>Sesiniz</b><span>Karışık</span></button>
-      </div>
-
-      <form class="stream-form" id="stream-form">
-        <label for="stream-url">Kendi HTTPS ses yayınını aç</label>
+      <form class="stream-form music-search" id="music-search-form">
+        <label for="music-query">Şarkı ara ve uygulama içinde dinle</label>
         <div>
-          <input id="stream-url" type="url" inputmode="url" placeholder="https://.../stream.mp3" required>
+          <input id="music-query" type="search" autocomplete="off" placeholder="Şarkı veya sanatçı yaz..." minlength="2" maxlength="120" required>
           <button class="primary-button" type="submit">Oynat</button>
         </div>
       </form>
+      <p class="search-status" id="music-search-status" role="status"></p>
+
+      <h3 class="subheading">Tüm radyo istasyonları</h3>
+      <div class="station-grid" id="station-grid"></div>
       <p class="hint">Yayınlar üçüncü taraf radyo sunucularından gelir. Bir istasyon açılmazsa diğerini deneyin.</p>
     </section>
 
     <section class="panel" id="chess">
       <div class="section-heading">
         <div>
-          <p class="section-kicker">Aynı cihazda 2 oyuncu</p>
+          <p class="section-kicker">Grubunla çevrim içi</p>
           <h2>Satranç</h2>
         </div>
         <span class="turn-badge" id="chess-turn">Beyaz</span>
@@ -85,7 +79,7 @@
       <p class="game-status" id="chess-status" role="status">Beyazın sırası</p>
       <div class="chess-board" id="chess-board" role="grid" aria-label="Satranç tahtası"></div>
       <div class="game-actions">
-        <button class="secondary-button" id="chess-undo" type="button">Geri al</button>
+        <button class="secondary-button" id="chess-refresh" type="button">Yenile</button>
         <button class="secondary-button" id="chess-flip" type="button">Tahtayı çevir</button>
         <button class="danger-button" id="chess-reset" type="button">Yeni oyun</button>
       </div>
@@ -99,21 +93,15 @@
     <section class="panel" id="ludo">
       <div class="section-heading">
         <div>
-          <p class="section-kicker">Aynı cihazda 2–4 oyuncu</p>
+          <p class="section-kicker">Grubunla çevrim içi · 2–4 oyuncu</p>
           <h2>Ludo</h2>
         </div>
         <span class="turn-badge red" id="ludo-turn">Kırmızı</span>
       </div>
 
       <div class="ludo-toolbar">
-        <label for="ludo-player-count">Oyuncu
-          <select id="ludo-player-count">
-            <option value="2">2 kişi</option>
-            <option value="3">3 kişi</option>
-            <option value="4">4 kişi</option>
-          </select>
-        </label>
-        <button class="danger-button" id="ludo-reset" type="button">Yeni oyun</button>
+        <span class="online-note" id="ludo-online">Odaya bağlanıyor…</span>
+        <button class="danger-button" id="ludo-start" type="button">Oyunu başlat</button>
       </div>
 
       <p class="game-status" id="ludo-status" role="status">Kırmızı zar atsın</p>
@@ -157,6 +145,7 @@
     <p class="toast" id="toast" role="status" aria-live="polite"></p>
   </main>
 
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@1.6.16/dist/hls.min.js"></script>
   <script src="./app.js"></script>
   <script type="module" src="./chess-game.js"></script>
   <script type="module" src="./ludo-game.js"></script>

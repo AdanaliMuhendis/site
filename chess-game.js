@@ -1,50 +1,42 @@
 import { Chess } from "./vendor/chess.js";
 
+const api = window.miniAppApi;
 const boardElement = document.getElementById("chess-board");
 const statusElement = document.getElementById("chess-status");
 const turnElement = document.getElementById("chess-turn");
 const historyElement = document.getElementById("chess-history");
-const storageKey = "alem-miniapp-chess-fen";
-
 const pieces = {
   wp: "♙", wn: "♘", wb: "♗", wr: "♖", wq: "♕", wk: "♔",
   bp: "♟", bn: "♞", bb: "♝", br: "♜", bq: "♛", bk: "♚",
 };
 
 let game = new Chess();
+let roomState = null;
 let selectedSquare = null;
 let orientation = "white";
+let requestBusy = false;
 
-try {
-  const savedFen = localStorage.getItem(storageKey);
-  if (savedFen) game.load(savedFen);
-} catch {
-  // Gizli modda depolama kapalı olabilir; yeni oyunla devam edilir.
+function playerName(color) {
+  return roomState?.players?.find((player) => player.color === color)?.name || "Bekleniyor";
 }
 
-function saveGame() {
-  try {
-    localStorage.setItem(storageKey, game.fen());
-  } catch {
-    // Oyun depolama olmadan da çalışır.
+function statusText() {
+  if (!api?.available) return "Mini App'i Telegram grubundaki /oyun bağlantısından açın.";
+  if (!roomState) return "Grup odasına bağlanıyor…";
+  if (!roomState.ready) return `Rakip bekleniyor · Sen: ${roomState.role === "white" ? "Beyaz" : "İzleyici"}`;
+  if (roomState.game_over) {
+    if (roomState.result === "1-0") return `${playerName("white")} kazandı.`;
+    if (roomState.result === "0-1") return `${playerName("black")} kazandı.`;
+    return "Oyun beraberlikle tamamlandı.";
   }
-}
-
-function getStatus() {
-  const side = game.turn() === "w" ? "Beyaz" : "Siyah";
-  if (game.isCheckmate()) return `Şah mat! ${side === "Beyaz" ? "Siyah" : "Beyaz"} kazandı.`;
-  if (game.isStalemate()) return "Pat! Oyun berabere.";
-  if (game.isThreefoldRepetition()) return "Üç kez tekrar nedeniyle beraberlik.";
-  if (game.isInsufficientMaterial()) return "Yetersiz taş nedeniyle beraberlik.";
-  if (game.isDrawByFiftyMoves()) return "50 hamle kuralı nedeniyle beraberlik.";
-  if (game.inCheck()) return `${side} şah altında.`;
-  return `${side}ın sırası`;
+  const current = roomState.turn === "white" ? "Beyaz" : "Siyah";
+  const suffix = roomState.check ? " · Şah!" : "";
+  return `${current} oynuyor (${playerName(roomState.turn)})${suffix} · Sen: ${roomState.role}`;
 }
 
 function renderHistory() {
-  const moves = game.history();
   historyElement.replaceChildren();
-  moves.forEach((move, index) => {
+  (roomState?.history || []).forEach((move, index) => {
     const item = document.createElement("li");
     item.value = Math.floor(index / 2) + 1;
     item.textContent = `${index % 2 === 0 ? "B" : "S"}: ${move}`;
@@ -57,15 +49,11 @@ function renderBoard() {
   const files = orientation === "white"
     ? ["a", "b", "c", "d", "e", "f", "g", "h"]
     : ["h", "g", "f", "e", "d", "c", "b", "a"];
-  const ranks = orientation === "white"
-    ? [8, 7, 6, 5, 4, 3, 2, 1]
-    : [1, 2, 3, 4, 5, 6, 7, 8];
-  const legalMoves = selectedSquare
-    ? game.moves({ square: selectedSquare, verbose: true })
-    : [];
+  const ranks = orientation === "white" ? [8, 7, 6, 5, 4, 3, 2, 1] : [1, 2, 3, 4, 5, 6, 7, 8];
+  const legalMoves = selectedSquare ? game.moves({ square: selectedSquare, verbose: true }) : [];
   const legalTargets = new Map(legalMoves.map((move) => [move.to, move]));
-
   boardElement.replaceChildren();
+
   ranks.forEach((rank, rowIndex) => {
     files.forEach((file, columnIndex) => {
       const squareName = `${file}${rank}`;
@@ -73,25 +61,20 @@ function renderBoard() {
       const square = document.createElement("button");
       square.type = "button";
       square.className = "chess-square";
-      square.dataset.square = squareName;
       square.setAttribute("role", "gridcell");
       square.setAttribute("aria-label", squareName);
-
-      const canonicalFileIndex = file.charCodeAt(0) - 97;
-      if ((canonicalFileIndex + rank) % 2 === 1) square.classList.add("dark");
+      if ((file.charCodeAt(0) - 97 + rank) % 2 === 1) square.classList.add("dark");
       if (selectedSquare === squareName) square.classList.add("selected");
       if (legalTargets.has(squareName)) {
         square.classList.add("legal");
         if (piece || legalTargets.get(squareName).flags.includes("e")) square.classList.add("capture");
       }
-
       if (piece) {
         const pieceElement = document.createElement("span");
         pieceElement.className = `chess-piece ${piece.color === "w" ? "white" : "black"}`;
         pieceElement.textContent = pieces[`${piece.color}${piece.type}`];
         square.append(pieceElement);
       }
-
       if (columnIndex === 0) {
         const coordinate = document.createElement("span");
         coordinate.className = "coordinate rank";
@@ -104,75 +87,92 @@ function renderBoard() {
         coordinate.textContent = file;
         square.append(coordinate);
       }
-
       square.addEventListener("click", () => handleSquare(squareName));
       boardElement.append(square);
     });
   });
 
-  const turnName = game.turn() === "w" ? "Beyaz" : "Siyah";
-  turnElement.textContent = turnName;
-  statusElement.textContent = getStatus();
+  turnElement.textContent = roomState ? (roomState.turn === "white" ? "Beyaz" : "Siyah") : "Çevrim içi";
+  statusElement.textContent = statusText();
   renderHistory();
 }
 
-function selectSquare(square) {
-  const piece = game.get(square);
-  if (piece?.color === game.turn()) {
-    selectedSquare = square;
-    window.miniAppHaptic?.();
-  } else {
-    selectedSquare = null;
-  }
+function applyState(state) {
+  roomState = state;
+  try { game.load(state.fen); } catch { return; }
+  if (state.role === "white" || state.role === "black") orientation = state.role;
+  selectedSquare = null;
   renderBoard();
 }
 
+async function sync(join = false, quiet = false) {
+  if (!api?.available || requestBusy) return;
+  requestBusy = true;
+  try {
+    const payload = await api.request(`/api/games/chess/${join ? "join" : "state"}`, {
+      method: join ? "POST" : "GET",
+    });
+    if (!roomState || payload.state.version !== roomState.version) applyState(payload.state);
+  } catch (error) {
+    statusElement.textContent = error.message;
+    if (!quiet) window.showMiniAppToast?.(error.message);
+  } finally {
+    requestBusy = false;
+  }
+}
+
+async function sendAction(payload) {
+  if (requestBusy) return;
+  requestBusy = true;
+  try {
+    const result = await api.request("/api/games/chess/action", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+    applyState(result.state);
+    window.miniAppHaptic?.("medium");
+  } catch (error) {
+    window.showMiniAppToast?.(error.message);
+    await sync(false, true);
+  } finally {
+    requestBusy = false;
+  }
+}
+
 function handleSquare(square) {
-  if (game.isGameOver()) return;
+  if (!roomState?.ready || roomState.game_over || roomState.role !== roomState.turn) return;
   if (!selectedSquare) {
-    selectSquare(square);
+    const piece = game.get(square);
+    if (piece?.color === game.turn()) selectedSquare = square;
+    renderBoard();
     return;
   }
-
   if (square === selectedSquare) {
     selectedSquare = null;
     renderBoard();
     return;
   }
-
-  try {
-    game.move({ from: selectedSquare, to: square, promotion: "q" });
+  const legal = game.moves({ square: selectedSquare, verbose: true }).some((move) => move.to === square);
+  if (legal) {
+    const source = selectedSquare;
     selectedSquare = null;
-    saveGame();
-    window.miniAppHaptic?.("medium");
+    sendAction({ action: "move", from: source, to: square, promotion: "q" });
+  } else {
+    const piece = game.get(square);
+    selectedSquare = piece?.color === game.turn() ? square : null;
     renderBoard();
-  } catch {
-    selectSquare(square);
   }
 }
 
-document.getElementById("chess-undo")?.addEventListener("click", () => {
-  const move = game.undo();
-  if (!move) {
-    window.showMiniAppToast?.("Geri alınacak hamle yok");
-    return;
-  }
-  selectedSquare = null;
-  saveGame();
-  renderBoard();
-});
-
+document.getElementById("chess-refresh")?.addEventListener("click", () => sync(false));
 document.getElementById("chess-flip")?.addEventListener("click", () => {
   orientation = orientation === "white" ? "black" : "white";
   renderBoard();
 });
-
 document.getElementById("chess-reset")?.addEventListener("click", () => {
-  game = new Chess();
-  selectedSquare = null;
-  saveGame();
-  window.miniAppHaptic?.("medium");
-  renderBoard();
+  if (roomState?.role !== "spectator") sendAction({ action: "reset" });
 });
 
 renderBoard();
+sync(true);
+setInterval(() => sync(false, true), 1800);
