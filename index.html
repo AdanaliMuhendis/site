@@ -76,12 +76,27 @@
         </div>
         <span class="turn-badge" id="chess-turn">Beyaz</span>
       </div>
+      <div class="game-lobby" id="chess-lobby">
+        <div class="room-create-row">
+          <button class="primary-button" id="chess-create" type="button">Yeni oyun oluştur</button>
+          <form class="room-join-form" id="chess-join-form">
+            <input id="chess-room-input" class="room-code-input" autocomplete="off" maxlength="6" placeholder="ODA KODU" aria-label="Satranç oda kodu" required>
+            <button class="secondary-button" type="submit">Oyuna katıl</button>
+          </form>
+        </div>
+        <div class="room-card" id="chess-room-card" hidden>
+          <div><small>Oda kodu</small><button class="room-code" id="chess-room-code" type="button">------</button></div>
+          <span id="chess-room-count">0/2 oyuncu</span>
+          <button class="danger-button" id="chess-start" type="button">Oyunu başlat</button>
+          <button class="secondary-button" id="chess-leave" type="button">Odadan çık</button>
+        </div>
+        <div class="room-players" id="chess-players"></div>
+      </div>
       <p class="game-status" id="chess-status" role="status">Beyazın sırası</p>
       <div class="chess-board" id="chess-board" role="grid" aria-label="Satranç tahtası"></div>
       <div class="game-actions">
-        <button class="secondary-button" id="chess-refresh" type="button">Yenile</button>
         <button class="secondary-button" id="chess-flip" type="button">Tahtayı çevir</button>
-        <button class="danger-button" id="chess-reset" type="button">Yeni oyun</button>
+        <button class="danger-button" id="chess-reset" type="button">Yeni el</button>
       </div>
       <div class="move-history">
         <strong>Hamleler</strong>
@@ -99,9 +114,28 @@
         <span class="turn-badge red" id="ludo-turn">Kırmızı</span>
       </div>
 
-      <div class="ludo-toolbar">
-        <span class="online-note" id="ludo-online">Odaya bağlanıyor…</span>
-        <button class="danger-button" id="ludo-start" type="button">Oyunu başlat</button>
+      <div class="game-lobby" id="ludo-lobby">
+        <div class="room-create-row ludo-create-row">
+          <label for="ludo-player-count">Oyuncu sayısı
+            <select id="ludo-player-count">
+              <option value="2">2 oyuncu</option>
+              <option value="3">3 oyuncu</option>
+              <option value="4">4 oyuncu</option>
+            </select>
+          </label>
+          <button class="primary-button" id="ludo-create" type="button">Yeni oyun oluştur</button>
+          <form class="room-join-form" id="ludo-join-form">
+            <input id="ludo-room-input" class="room-code-input" autocomplete="off" maxlength="6" placeholder="ODA KODU" aria-label="Ludo oda kodu" required>
+            <button class="secondary-button" type="submit">Oyuna katıl</button>
+          </form>
+        </div>
+        <div class="room-card" id="ludo-room-card" hidden>
+          <div><small>Oda kodu</small><button class="room-code" id="ludo-room-code" type="button">------</button></div>
+          <span id="ludo-online">0/2 oyuncu</span>
+          <button class="danger-button" id="ludo-start" type="button">Oyunu başlat</button>
+          <button class="secondary-button" id="ludo-leave" type="button">Odadan çık</button>
+        </div>
+        <div class="room-players" id="ludo-room-players"></div>
       </div>
 
       <p class="game-status" id="ludo-status" role="status">Kırmızı zar atsın</p>

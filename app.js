@@ -141,10 +141,16 @@ const stationGrid = document.getElementById("station-grid");
 const searchStatus = document.getElementById("music-search-status");
 let activeStation = null;
 let hls = null;
+let trackObjectUrl = null;
 
 function destroyHls() {
   hls?.destroy();
   hls = null;
+}
+
+function releaseTrackObjectUrl() {
+  if (trackObjectUrl) URL.revokeObjectURL(trackObjectUrl);
+  trackObjectUrl = null;
 }
 
 async function playStream(url, name) {
@@ -181,6 +187,7 @@ RADIO_STATIONS.forEach(([name, stream]) => {
   station.className = "station";
   station.innerHTML = `<b>${name}</b><span>Canlı radyo</span>`;
   station.addEventListener("click", () => {
+    releaseTrackObjectUrl();
     activeStation = station;
     playStream(stream, name);
   });
@@ -199,8 +206,19 @@ document.getElementById("music-search-form")?.addEventListener("submit", async (
       method: "POST",
       body: JSON.stringify({ query }),
     });
+    searchStatus.textContent = "Şarkı uygulamaya yükleniyor…";
+    const mediaResponse = await fetch(payload.track.media_url, { cache: "no-store" });
+    if (!mediaResponse.ok) throw new Error("Şarkı dosyası alınamadı.");
+    const audioBlob = await mediaResponse.blob();
+    if (!audioBlob.size || (!audioBlob.type.startsWith("audio/") && audioBlob.type !== "application/octet-stream")) {
+      throw new Error("Geçerli bir ses dosyası alınamadı.");
+    }
+    releaseTrackObjectUrl();
+    trackObjectUrl = URL.createObjectURL(audioBlob.type.startsWith("audio/")
+      ? audioBlob
+      : new Blob([audioBlob], { type: "audio/mpeg" }));
     activeStation = null;
-    await playStream(payload.track.media_url, payload.track.title);
+    await playStream(trackObjectUrl, payload.track.title);
     searchStatus.textContent = `${payload.track.channel || "Alem Müzik"} · Uygulama içinde oynatılıyor`;
   } catch (error) {
     searchStatus.textContent = error.message;
@@ -212,6 +230,7 @@ document.getElementById("music-search-form")?.addEventListener("submit", async (
 
 document.getElementById("stop-music")?.addEventListener("click", () => {
   destroyHls();
+  releaseTrackObjectUrl();
   player.pause();
   player.removeAttribute("src");
   player.load();

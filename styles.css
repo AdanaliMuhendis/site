@@ -721,6 +721,216 @@ select:focus {
 .turn-badge.yellow { color: #f7d670; border-color: currentColor; background: rgba(247, 214, 112, 0.1); }
 .turn-badge.blue { color: #74b8ff; border-color: currentColor; background: rgba(116, 184, 255, 0.1); }
 
+/* Sade oyun lobisi ve sabit oyun tahtaları */
+#chess,
+#ludo {
+  background: #101b20;
+}
+
+.game-lobby {
+  margin-bottom: 12px;
+  padding: 11px;
+  border: 1px solid #2a3a41;
+  border-radius: 13px;
+  background: #0b1418;
+}
+
+.room-create-row {
+  display: grid;
+  grid-template-columns: minmax(140px, 0.8fr) minmax(220px, 1.4fr);
+  gap: 9px;
+  align-items: end;
+}
+
+.ludo-create-row {
+  grid-template-columns: minmax(105px, 0.55fr) minmax(145px, 0.75fr) minmax(220px, 1.4fr);
+}
+
+.ludo-create-row label {
+  color: #b6c5cb;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.ludo-create-row select {
+  display: block;
+  width: 100%;
+  margin-top: 5px;
+  padding: 0 8px;
+}
+
+.room-join-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 94px;
+  gap: 7px;
+}
+
+.room-code-input {
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  font-weight: 900;
+}
+
+.room-card {
+  display: grid;
+  grid-template-columns: 1fr auto auto auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.room-card[hidden],
+.room-create-row[hidden] {
+  display: none;
+}
+
+.room-card small {
+  display: block;
+  color: #9fb4bd;
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.room-code {
+  padding: 0;
+  background: transparent;
+  color: #f1c96b;
+  font-size: 22px;
+  font-weight: 950;
+  letter-spacing: 0.14em;
+}
+
+.room-card > span {
+  color: #c4d1d6;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.room-players {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+  margin-top: 9px;
+}
+
+.room-player {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 9px;
+  padding: 8px;
+  border: 1px solid #34464e;
+  border-radius: 10px;
+  background: #152228;
+}
+
+.room-player.empty {
+  border-style: dashed;
+  opacity: 0.66;
+}
+
+.player-avatar {
+  display: grid;
+  flex: 0 0 38px;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border: 2px solid #627983;
+  border-radius: 50%;
+  object-fit: cover;
+  background: #263840;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.room-player > div {
+  min-width: 0;
+}
+
+.room-player b,
+.room-player span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.room-player b { font-size: 11px; }
+.room-player div span { margin-top: 3px; color: #9fb4bd; font-size: 9px; }
+
+#chess .game-actions {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.chess-board {
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  grid-template-rows: repeat(8, minmax(0, 1fr));
+  width: 100%;
+  max-width: 520px;
+  min-width: 0;
+  overflow: hidden;
+  border-color: #4b3728;
+  background: #f0d9b5;
+  contain: layout paint;
+}
+
+.chess-square {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: #f0d9b5;
+  color: #171717;
+  font-size: clamp(25px, 9vw, 50px);
+  touch-action: manipulation;
+}
+
+.chess-square.dark { background: #b58863; }
+.chess-square.selected { box-shadow: inset 0 0 0 4px #f7d154; }
+.chess-piece.white { color: #fffdf3; text-shadow: 0 0 2px #111, 0 2px 2px #222; }
+.chess-piece.black { color: #151515; text-shadow: 0 1px 0 rgba(255,255,255,0.25); }
+
+.ludo-board {
+  width: 100%;
+  max-width: 520px;
+  min-width: 0;
+  overflow: hidden;
+  border: 4px solid #53636a;
+  background: #dfe5e2;
+  contain: layout paint;
+}
+
+.ludo-cell {
+  border-color: rgba(20, 32, 36, 0.3);
+  background: #dfe5e2;
+}
+
+.ludo-cell.yard-red { background: #f0a7af; }
+.ludo-cell.yard-green { background: #9bd7b7; }
+.ludo-cell.yard-yellow { background: #f1d98b; }
+.ludo-cell.yard-blue { background: #9dc6e9; }
+.ludo-cell.track { background: #f8faf9; }
+.ludo-cell.home-red, .ludo-cell.start-red { background: #df5061; }
+.ludo-cell.home-green, .ludo-cell.start-green { background: #35a96f; }
+.ludo-cell.home-yellow, .ludo-cell.start-yellow { background: #d8aa22; }
+.ludo-cell.home-blue, .ludo-cell.start-blue { background: #3c88c9; }
+
+.ludo-token {
+  max-width: 25px;
+  min-width: 8px;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 2px 3px #000, 0 0 0 1px rgba(0,0,0,0.55);
+}
+
+.ludo-token.red { background: #b70f2a; }
+.ludo-token.green { background: #08784a; }
+.ludo-token.yellow { background: #c38800; }
+.ludo-token.blue { background: #075da9; }
+
 .quick-actions,
 .command-list,
 .link-list {
@@ -802,7 +1012,7 @@ select:focus {
   transform: translate(-50%, 0);
 }
 
-@media (max-width: 420px) {
+@media (max-width: 600px) {
   .hero {
     grid-template-columns: 68px 1fr;
   }
@@ -816,18 +1026,46 @@ select:focus {
     padding: 11px;
   }
 
+  .room-create-row,
+  .ludo-create-row {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .room-create-row > .room-join-form,
+  .ludo-create-row > .room-join-form {
+    grid-column: 1 / -1;
+  }
+
+  #chess .room-create-row > .primary-button {
+    grid-column: 1 / -1;
+  }
+
+  .room-card {
+    grid-template-columns: 1fr auto;
+  }
+
+  .room-card > .danger-button,
+  .room-card > .secondary-button {
+    width: 100%;
+  }
+
+  .room-players {
+    grid-template-columns: 1fr;
+  }
+
   .game-actions {
     grid-template-columns: 1fr 1fr;
   }
 
   .game-actions .danger-button {
-    grid-column: 1 / -1;
+    grid-column: auto;
   }
 
   .chess-board,
   .ludo-board {
-    width: calc(100% + 2px);
-    margin-left: -1px;
+    width: calc(100% - 24px);
+    margin-right: auto;
+    margin-left: auto;
   }
 }
 

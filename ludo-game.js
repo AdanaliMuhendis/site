@@ -5,8 +5,12 @@ const turnElement = document.getElementById("ludo-turn");
 const diceButton = document.getElementById("ludo-dice");
 const diceValue = document.getElementById("dice-value");
 const playerList = document.getElementById("ludo-players");
+const roomPlayers = document.getElementById("ludo-room-players");
+const roomCard = document.getElementById("ludo-room-card");
+const roomCodeElement = document.getElementById("ludo-room-code");
 const onlineNote = document.getElementById("ludo-online");
 const startButton = document.getElementById("ludo-start");
+const createRow = document.querySelector("#ludo-lobby .room-create-row");
 
 const track = [
   [6,0],[6,1],[6,2],[6,3],[6,4],[6,5],[5,6],[4,6],[3,6],[2,6],[1,6],[0,6],[0,7],
@@ -20,18 +24,21 @@ const definitions = {
   yellow: { name: "Sarı", offset: 26, yard: [[10,10],[10,13],[13,10],[13,13]], home: [[7,13],[7,12],[7,11],[7,10],[7,9],[7,8]] },
   blue: { name: "Mavi", offset: 39, yard: [[10,1],[10,4],[13,1],[13,4]], home: [[13,7],[12,7],[11,7],[10,7],[9,7],[8,7]] },
 };
-const safeTrackIndexes = new Set([0, 8, 13, 21, 26, 34, 39, 47]);
-const diceFaces = ["⚀", "⚁", "⚂", "⚃", "⚄", "⚅"];
+const safeTrackIndexes = new Set([0,8,13,21,26,34,39,47]);
+const diceFaces = ["⚀","⚁","⚂","⚃","⚄","⚅"];
 const cells = new Map();
 const key = (row, column) => `${row},${column}`;
 const trackByCell = new Map(track.map((position, index) => [key(...position), index]));
 const homeByCell = new Map();
-Object.entries(definitions).forEach(([color, definition]) => {
-  definition.home.forEach((position) => homeByCell.set(key(...position), color));
-});
+Object.entries(definitions).forEach(([color, definition]) => definition.home.forEach((position) => homeByCell.set(key(...position), color)));
 
 let state = null;
+let roomCode = sessionStorage.getItem("alem-ludo-room") || "";
 let busy = false;
+
+function initials(name) {
+  return name.split(/\s+/).slice(0, 2).map((part) => part[0] || "").join("").toUpperCase();
+}
 
 function yardColor(row, column) {
   if (row < 6 && column < 6) return "red";
@@ -44,25 +51,23 @@ function yardColor(row, column) {
 function buildBoard() {
   boardElement.replaceChildren();
   cells.clear();
-  for (let row = 0; row < 15; row += 1) {
-    for (let column = 0; column < 15; column += 1) {
-      const cell = document.createElement("div");
-      cell.className = "ludo-cell";
-      const yard = yardColor(row, column);
-      if (yard) cell.classList.add(`yard-${yard}`);
-      const trackIndex = trackByCell.get(key(row, column));
-      if (trackIndex !== undefined) {
-        cell.classList.add("track");
-        if (safeTrackIndexes.has(trackIndex)) cell.classList.add("safe");
-        const starter = Object.entries(definitions).find(([, item]) => item.offset === trackIndex);
-        if (starter) cell.classList.add(`start-${starter[0]}`);
-      }
-      const homeColor = homeByCell.get(key(row, column));
-      if (homeColor) cell.classList.add(`home-${homeColor}`);
-      if (row === 7 && column === 7) cell.classList.add("center");
-      boardElement.append(cell);
-      cells.set(key(row, column), cell);
+  for (let row = 0; row < 15; row += 1) for (let column = 0; column < 15; column += 1) {
+    const cell = document.createElement("div");
+    cell.className = "ludo-cell";
+    const yard = yardColor(row, column);
+    if (yard) cell.classList.add(`yard-${yard}`);
+    const trackIndex = trackByCell.get(key(row, column));
+    if (trackIndex !== undefined) {
+      cell.classList.add("track");
+      if (safeTrackIndexes.has(trackIndex)) cell.classList.add("safe");
+      const starter = Object.entries(definitions).find(([, item]) => item.offset === trackIndex);
+      if (starter) cell.classList.add(`start-${starter[0]}`);
     }
+    const homeColor = homeByCell.get(key(row, column));
+    if (homeColor) cell.classList.add(`home-${homeColor}`);
+    if (row === 7 && column === 7) cell.classList.add("center");
+    boardElement.append(cell);
+    cells.set(key(row, column), cell);
   }
 }
 
@@ -75,22 +80,20 @@ function tokenPosition(player, tokenIndex) {
 }
 
 function tokenLayout(index, count) {
-  if (count === 1) return { width: 70, left: 15, top: 15 };
+  if (count === 1) return { width: 78, left: 11, top: 11 };
   const columns = Math.ceil(Math.sqrt(count));
   const rows = Math.ceil(count / columns);
-  return { width: Math.min(48, 90 / columns), left: 5 + (index % columns) * (90 / columns), top: 5 + Math.floor(index / columns) * (90 / rows) };
+  return { width: Math.min(52, 94 / columns), left: 3 + (index % columns) * (94 / columns), top: 3 + Math.floor(index / columns) * (94 / rows) };
 }
 
 function statusText() {
-  if (!api?.available) return "Mini App'i Telegram grubundaki /oyun bağlantısından açın.";
-  if (!state) return "Grup odasına bağlanıyor…";
-  if (!state.started) return state.players.length < 2
-    ? "Başlamak için en az bir grup arkadaşının katılması gerekiyor."
-    : "Oda sahibi oyunu başlatabilir.";
-  if (state.winner_id) return `${state.players.find((p) => p.id === state.winner_id)?.name || "Oyuncu"} kazandı!`;
-  const current = state.players.find((p) => p.id === state.turn_user_id);
-  if (state.current_roll !== null) return `${current?.name}: parlayan taşlardan birini seç.`;
-  return `${current?.name || "Oyuncu"} zar atsın.`;
+  if (!api?.available) return "Mini App'i Telegram içinden açın.";
+  if (!roomCode) return "Oyuncu sayısını seçip oda oluştur veya bir oda koduyla katıl.";
+  if (!state) return "Odaya bağlanıyor…";
+  if (!state.started) return state.players.length === state.required_players ? "Tüm oyuncular hazır. Oda sahibi başlatabilir." : `${state.required_players - state.players.length} oyuncu daha bekleniyor.`;
+  if (state.winner_id) return `${state.players.find((player) => player.id === state.winner_id)?.name || "Oyuncu"} kazandı!`;
+  const current = state.players.find((player) => player.id === state.turn_user_id);
+  return state.current_roll !== null ? `${current?.name}: parlayan taşlardan birini seç.` : `${current?.name || "Oyuncu"} zar atsın.`;
 }
 
 function renderTokens() {
@@ -118,73 +121,125 @@ function renderTokens() {
   });
 }
 
-function renderPlayers() {
+function renderGamePlayers() {
   playerList.replaceChildren();
   (state?.players || []).forEach((player) => {
     const finished = player.tokens.filter((progress) => progress === 57).length;
     const onRoad = player.tokens.filter((progress) => progress >= 0 && progress < 57).length;
     const card = document.createElement("div");
-    const color = player.color || "waiting";
-    card.className = `ludo-player ${color}${player.id === state.turn_user_id ? " active" : ""}`;
-    card.innerHTML = `<b>${player.name}${player.id === state.you_id ? " (Sen)" : ""}</b>${state.started ? `Yolda ${onRoad} · Bitiren ${finished}/4` : "Oyuna hazır"}`;
+    card.className = `ludo-player ${player.color || "waiting"}${player.id === state.turn_user_id ? " active" : ""}`;
+    card.innerHTML = `<b>${player.name}${player.id === state.you_id ? " (Sen)" : ""}</b>${state.started ? `Yolda ${onRoad} · Bitiren ${finished}/4` : "Hazır"}`;
     playerList.append(card);
   });
 }
 
+function renderRoomPlayers() {
+  roomPlayers.replaceChildren();
+  if (!state) return;
+  (state?.players || []).forEach((player, index) => {
+    const card = document.createElement("div");
+    card.className = `room-player ${player.color || "waiting"}`;
+    const avatar = document.createElement(player.photo_url ? "img" : "span");
+    avatar.className = "player-avatar";
+    if (player.photo_url) { avatar.src = player.photo_url; avatar.alt = ""; avatar.referrerPolicy = "no-referrer"; }
+    else avatar.textContent = initials(player.name);
+    const details = document.createElement("div");
+    details.innerHTML = `<b>${player.name}${player.id === state.you_id ? " (Sen)" : ""}</b><span>${index === 0 ? "Oda sahibi" : `Oyuncu ${index + 1}`}</span>`;
+    card.append(avatar, details);
+    roomPlayers.append(card);
+  });
+  for (let index = state?.players?.length || 0; index < (state?.required_players || 0); index += 1) {
+    const empty = document.createElement("div");
+    empty.className = "room-player empty";
+    empty.innerHTML = `<span class="player-avatar">+</span><div><b>Oyuncu bekleniyor</b><span>Oda kodunu paylaş</span></div>`;
+    roomPlayers.append(empty);
+  }
+}
+
 function render() {
+  const joined = Boolean(roomCode && state);
+  roomCard.hidden = !joined;
+  createRow.hidden = joined;
+  roomCodeElement.textContent = roomCode || "------";
+  onlineNote.textContent = joined ? `${state.players.length}/${state.required_players} oyuncu` : "Oda yok";
+  startButton.hidden = !joined || state.started || state.host_id !== state.you_id;
+  startButton.disabled = !joined || state.players.length !== state.required_players;
   const current = state?.players?.find((player) => player.id === state.turn_user_id);
   const winner = state?.players?.find((player) => player.id === state.winner_id);
-  const color = winner?.color || current?.color || "";
-  turnElement.textContent = winner ? `${winner.name} kazandı` : current?.name || "Çevrim içi";
-  turnElement.className = `turn-badge ${color}`;
+  turnElement.textContent = winner ? `${winner.name} kazandı` : current?.name || "Oda bekliyor";
+  turnElement.className = `turn-badge ${winner?.color || current?.color || ""}`;
   statusElement.textContent = statusText();
-  onlineNote.textContent = state ? `${state.players.length}/4 oyuncu · ${state.role === "spectator" ? "İzleyici" : "Odadasın"}` : "Odaya bağlanıyor…";
-  startButton.hidden = !state || state.started || state.host_id !== state.you_id;
   diceButton.textContent = state?.current_roll ? diceFaces[state.current_roll - 1] : diceFaces[0];
   diceValue.textContent = state?.current_roll ? `${state.current_roll} geldi` : "Zar at";
   diceButton.disabled = busy || !state?.started || state.winner_id !== null || state.current_roll !== null || state.turn_user_id !== state.you_id;
   renderTokens();
-  renderPlayers();
+  renderGamePlayers();
+  renderRoomPlayers();
 }
 
 function applyState(nextState) {
   state = nextState;
+  roomCode = nextState.room;
+  sessionStorage.setItem("alem-ludo-room", roomCode);
   render();
 }
 
-async function sync(join = false, quiet = false) {
+function leaveRoom() {
+  roomCode = "";
+  state = null;
+  sessionStorage.removeItem("alem-ludo-room");
+  render();
+}
+
+async function roomRequest(path, body) {
   if (!api?.available || busy) return;
   busy = true;
   try {
-    const payload = await api.request(`/api/games/ludo/${join ? "join" : "state"}`, { method: join ? "POST" : "GET" });
-    if (!state || payload.state.version !== state.version) applyState(payload.state);
+    const result = await api.request(`/api/games/ludo/${path}`, { method: "POST", body: JSON.stringify(body) });
+    applyState(result.state);
   } catch (error) {
+    window.showMiniAppToast?.(error.message);
     statusElement.textContent = error.message;
+  } finally { busy = false; render(); }
+}
+
+async function sync(quiet = false) {
+  if (!api?.available || !roomCode || busy) return;
+  busy = true;
+  try {
+    const result = await api.request(`/api/games/ludo/state?room=${encodeURIComponent(roomCode)}`);
+    if (!state || result.state.version !== state.version) applyState(result.state);
+  } catch (error) {
     if (!quiet) window.showMiniAppToast?.(error.message);
-  } finally {
-    busy = false;
-    render();
-  }
+    if (/bulunamadı/i.test(error.message)) leaveRoom();
+  } finally { busy = false; render(); }
 }
 
 async function action(payload) {
-  if (busy) return;
+  if (!roomCode || busy) return;
   busy = true;
   try {
-    const result = await api.request("/api/games/ludo/action", { method: "POST", body: JSON.stringify(payload) });
+    const result = await api.request("/api/games/ludo/action", { method: "POST", body: JSON.stringify({ room: roomCode, ...payload }) });
     applyState(result.state);
     window.miniAppHaptic?.("medium");
-  } catch (error) {
-    window.showMiniAppToast?.(error.message);
-  } finally {
-    busy = false;
-    render();
-  }
+  } catch (error) { window.showMiniAppToast?.(error.message); }
+  finally { busy = false; render(); }
 }
 
+document.getElementById("ludo-create")?.addEventListener("click", () => roomRequest("create", { players: Number(document.getElementById("ludo-player-count").value) }));
+document.getElementById("ludo-join-form")?.addEventListener("submit", (event) => {
+  event.preventDefault();
+  roomRequest("join", { room: document.getElementById("ludo-room-input").value.trim().toUpperCase() });
+});
+roomCodeElement?.addEventListener("click", async () => {
+  await navigator.clipboard.writeText(roomCode).catch(() => {});
+  window.showMiniAppToast?.(`Oda kodu kopyalandı: ${roomCode}`);
+});
+document.getElementById("ludo-leave")?.addEventListener("click", leaveRoom);
 diceButton?.addEventListener("click", () => action({ action: "roll" }));
 startButton?.addEventListener("click", () => action({ action: "start" }));
+
 buildBoard();
 render();
-sync(true);
-setInterval(() => sync(false, true), 1800);
+if (roomCode) sync();
+setInterval(() => sync(true), 1800);
