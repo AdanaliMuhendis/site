@@ -11,6 +11,13 @@ const roomCodeElement = document.getElementById("ludo-room-code");
 const onlineNote = document.getElementById("ludo-online");
 const startButton = document.getElementById("ludo-start");
 const createRow = document.querySelector("#ludo-lobby .room-create-row");
+const lobby = document.getElementById("ludo-lobby");
+const modeSelect = document.getElementById("ludo-mode");
+const playerCountSelect = document.getElementById("ludo-player-count");
+const teamBanner = document.getElementById("ludo-team-banner");
+const timerElement = document.getElementById("ludo-timer");
+const lastRollElement = document.getElementById("ludo-last-roll");
+const boardNames = Object.fromEntries(["red", "green", "yellow", "blue"].map((color) => [color, document.getElementById(`ludo-board-name-${color}`)]));
 
 const track = [
   [6,0],[6,1],[6,2],[6,3],[6,4],[6,5],[5,6],[4,6],[3,6],[2,6],[1,6],[0,6],[0,7],
@@ -31,10 +38,12 @@ const key = (row, column) => `${row},${column}`;
 const trackByCell = new Map(track.map((position, index) => [key(...position), index]));
 const homeByCell = new Map();
 Object.entries(definitions).forEach(([color, definition]) => definition.home.forEach((position) => homeByCell.set(key(...position), color)));
+const yardSlots = new Set(Object.values(definitions).flatMap((definition) => definition.yard.map((position) => key(...position))));
 
 let state = null;
 let roomCode = sessionStorage.getItem("alem-ludo-room") || "";
 let busy = false;
+let serverClockOffset = 0;
 
 function initials(name) {
   return name.split(/\s+/).slice(0, 2).map((part) => part[0] || "").join("").toUpperCase();
@@ -56,6 +65,7 @@ function buildBoard() {
     cell.className = "ludo-cell";
     const yard = yardColor(row, column);
     if (yard) cell.classList.add(`yard-${yard}`);
+    if (yardSlots.has(key(row, column))) cell.classList.add("yard-slot");
     const trackIndex = trackByCell.get(key(row, column));
     if (trackIndex !== undefined) {
       cell.classList.add("track");
@@ -91,6 +101,7 @@ function statusText() {
   if (!roomCode) return "Oyuncu sayısını seçip oda oluştur veya bir oda koduyla katıl.";
   if (!state) return "Odaya bağlanıyor…";
   if (!state.started) return state.players.length === state.required_players ? "Tüm oyuncular hazır. Oda sahibi başlatabilir." : `${state.required_players - state.players.length} oyuncu daha bekleniyor.`;
+  if (state.winner_team) return `Takım ${state.winner_team} kazandı!`;
   if (state.winner_id) return `${state.players.find((player) => player.id === state.winner_id)?.name || "Oyuncu"} kazandı!`;
   const current = state.players.find((player) => player.id === state.turn_user_id);
   return state.current_roll !== null ? `${current?.name}: parlayan taşlardan birini seç.` : `${current?.name || "Oyuncu"} zar atsın.`;
@@ -128,7 +139,12 @@ function renderGamePlayers() {
     const onRoad = player.tokens.filter((progress) => progress >= 0 && progress < 57).length;
     const card = document.createElement("div");
     card.className = `ludo-player ${player.color || "waiting"}${player.id === state.turn_user_id ? " active" : ""}`;
-    card.innerHTML = `<b>${player.name}${player.id === state.you_id ? " (Sen)" : ""}</b>${state.started ? `Yolda ${onRoad} · Bitiren ${finished}/4` : "Hazır"}`;
+    const team = state.mode === "teams" ? ` · Takım ${player.team}` : "";
+    const name = document.createElement("b");
+    name.textContent = `${player.name}${player.id === state.you_id ? " (Sen)" : ""}`;
+    const summary = document.createElement("span");
+    summary.textContent = state.started ? `${definitions[player.color]?.name || ""}${team} · Yolda ${onRoad} · Bitiş ${finished}/4` : "Hazır";
+    card.append(name, summary);
     playerList.append(card);
   });
 }
@@ -144,7 +160,12 @@ function renderRoomPlayers() {
     if (player.photo_url) { avatar.src = player.photo_url; avatar.alt = ""; avatar.referrerPolicy = "no-referrer"; }
     else avatar.textContent = initials(player.name);
     const details = document.createElement("div");
-    details.innerHTML = `<b>${player.name}${player.id === state.you_id ? " (Sen)" : ""}</b><span>${index === 0 ? "Oda sahibi" : `Oyuncu ${index + 1}`}</span>`;
+    const waitingTeam = state.mode === "teams" ? ` · Takım ${index % 2 === 0 ? "A" : "B"}` : "";
+    const name = document.createElement("b");
+    name.textContent = `${player.name}${player.id === state.you_id ? " (Sen)" : ""}`;
+    const role = document.createElement("span");
+    role.textContent = `${index === 0 ? "Oda sahibi" : `Oyuncu ${index + 1}`}${waitingTeam}`;
+    details.append(name, role);
     card.append(avatar, details);
     roomPlayers.append(card);
   });
@@ -156,29 +177,73 @@ function renderRoomPlayers() {
   }
 }
 
+function renderBoardNames() {
+  Object.values(boardNames).forEach((element) => { if (element) element.textContent = ""; });
+  (state?.players || []).forEach((player) => {
+    if (player.color && boardNames[player.color]) boardNames[player.color].textContent = player.name;
+  });
+}
+
+function renderTimer() {
+  if (!state?.started || !state.turn_deadline || state.winner_id || state.winner_team) {
+    timerElement.textContent = "--";
+    return;
+  }
+  const serverNow = (Date.now() / 1000) + serverClockOffset;
+  timerElement.textContent = `${Math.max(0, Math.ceil(state.turn_deadline - serverNow))}s`;
+}
+
+function renderLastRoll() {
+  const player = state?.players?.find((candidate) => candidate.id === state.last_roll_user_id);
+  if (!player || !state.last_roll) {
+    lastRollElement.hidden = true;
+    return;
+  }
+  lastRollElement.hidden = false;
+  lastRollElement.className = `ludo-last-roll ${player.color || ""}`;
+  const face = document.createElement("span");
+  face.className = "last-dice";
+  face.textContent = diceFaces[state.last_roll - 1];
+  const details = document.createElement("div");
+  const name = document.createElement("b");
+  name.textContent = player.name;
+  const result = document.createElement("strong");
+  result.textContent = `${state.last_roll} attı`;
+  details.append(name, result);
+  lastRollElement.replaceChildren(face, details);
+}
+
 function render() {
   const joined = Boolean(roomCode && state);
+  lobby.hidden = Boolean(state?.started);
   roomCard.hidden = !joined;
   createRow.hidden = joined;
-  roomCodeElement.textContent = roomCode || "------";
-  onlineNote.textContent = joined ? `${state.players.length}/${state.required_players} oyuncu` : "Oda yok";
+  const roomCodeText = roomCodeElement.querySelector("strong");
+  if (roomCodeText) roomCodeText.textContent = roomCode || "------";
+  onlineNote.textContent = joined ? `♙ ${state.players.length}/${state.required_players} oyuncu` : "♙ Oda yok";
   startButton.hidden = !joined || state.started || state.host_id !== state.you_id;
   startButton.disabled = !joined || state.players.length !== state.required_players;
   const current = state?.players?.find((player) => player.id === state.turn_user_id);
   const winner = state?.players?.find((player) => player.id === state.winner_id);
-  turnElement.textContent = winner ? `${winner.name} kazandı` : current?.name || "Oda bekliyor";
+  const teamWinner = state?.winner_team ? `Takım ${state.winner_team} kazandı` : "";
+  turnElement.textContent = teamWinner || (winner ? `${winner.name} kazandı` : current?.name || "Oda bekliyor");
   turnElement.className = `turn-badge ${winner?.color || current?.color || ""}`;
+  teamBanner.hidden = state?.mode !== "teams";
   statusElement.textContent = statusText();
   diceButton.textContent = state?.current_roll ? diceFaces[state.current_roll - 1] : diceFaces[0];
   diceValue.textContent = state?.current_roll ? `${state.current_roll} geldi` : "Zar at";
-  diceButton.disabled = busy || !state?.started || state.winner_id !== null || state.current_roll !== null || state.turn_user_id !== state.you_id;
+  diceButton.disabled = busy || !state?.started || Boolean(state.winner_id || state.winner_team) || state.current_roll !== null || state.turn_user_id !== state.you_id;
   renderTokens();
   renderGamePlayers();
   renderRoomPlayers();
+  renderBoardNames();
+  renderTimer();
+  renderLastRoll();
 }
 
 function applyState(nextState) {
   state = nextState;
+  if (Number.isFinite(nextState.server_time)) serverClockOffset = nextState.server_time - (Date.now() / 1000);
   roomCode = nextState.room;
   sessionStorage.setItem("alem-ludo-room", roomCode);
   render();
@@ -226,7 +291,10 @@ async function action(payload) {
   finally { busy = false; render(); }
 }
 
-document.getElementById("ludo-create")?.addEventListener("click", () => roomRequest("create", { players: Number(document.getElementById("ludo-player-count").value) }));
+document.getElementById("ludo-create")?.addEventListener("click", () => roomRequest("create", {
+  players: Number(playerCountSelect.value),
+  mode: modeSelect.value,
+}));
 document.getElementById("ludo-join-form")?.addEventListener("submit", (event) => {
   event.preventDefault();
   roomRequest("join", { room: document.getElementById("ludo-room-input").value.trim().toUpperCase() });
@@ -236,10 +304,21 @@ roomCodeElement?.addEventListener("click", async () => {
   window.showMiniAppToast?.(`Oda kodu kopyalandı: ${roomCode}`);
 });
 document.getElementById("ludo-leave")?.addEventListener("click", leaveRoom);
-diceButton?.addEventListener("click", () => action({ action: "roll" }));
+diceButton?.addEventListener("click", () => {
+  diceButton.classList.remove("rolling");
+  void diceButton.offsetWidth;
+  diceButton.classList.add("rolling");
+  action({ action: "roll" });
+});
 startButton?.addEventListener("click", () => action({ action: "start" }));
+modeSelect?.addEventListener("change", () => {
+  const teams = modeSelect.value === "teams";
+  if (teams) playerCountSelect.value = "4";
+  playerCountSelect.disabled = teams;
+});
 
 buildBoard();
 render();
 if (roomCode) sync();
 setInterval(() => sync(true), 1800);
+setInterval(renderTimer, 250);

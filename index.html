@@ -108,14 +108,19 @@
     <section class="panel" id="ludo">
       <div class="section-heading">
         <div>
-          <p class="section-kicker">Grubunla çevrim içi · 2–4 oyuncu</p>
+          <p class="section-kicker">Çevrim içi · Tekli veya 2'ye 2 takım</p>
           <h2>Ludo</h2>
         </div>
-        <span class="turn-badge red" id="ludo-turn">Kırmızı</span>
       </div>
 
       <div class="game-lobby" id="ludo-lobby">
         <div class="room-create-row ludo-create-row">
+          <label for="ludo-mode">Oyun modu
+            <select id="ludo-mode">
+              <option value="classic">Klasik</option>
+              <option value="teams">2'ye 2 Takım</option>
+            </select>
+          </label>
           <label for="ludo-player-count">Oyuncu sayısı
             <select id="ludo-player-count">
               <option value="2">2 oyuncu</option>
@@ -129,23 +134,42 @@
             <button class="secondary-button" type="submit">Oyuna katıl</button>
           </form>
         </div>
-        <div class="room-card" id="ludo-room-card" hidden>
-          <div><small>Oda kodu</small><button class="room-code" id="ludo-room-code" type="button">------</button></div>
-          <span id="ludo-online">0/2 oyuncu</span>
-          <button class="danger-button" id="ludo-start" type="button">Oyunu başlat</button>
-          <button class="secondary-button" id="ludo-leave" type="button">Odadan çık</button>
-        </div>
         <div class="room-players" id="ludo-room-players"></div>
       </div>
 
-      <p class="game-status" id="ludo-status" role="status">Kırmızı zar atsın</p>
-      <div class="ludo-board" id="ludo-board" aria-label="Ludo tahtası"></div>
-      <div class="dice-area">
-        <button class="dice" id="ludo-dice" type="button" aria-label="Zar at">⚀</button>
-        <div><strong id="dice-value">Zar at</strong><span>Sonra hareket edecek taşına dokun</span></div>
+      <div class="ludo-match-hud room-card" id="ludo-room-card" hidden>
+        <button class="ludo-exit" id="ludo-leave" type="button"><span>↪</span> Çık</button>
+        <div class="ludo-turn-panel">
+          <small>Sıra</small>
+          <strong class="turn-badge red" id="ludo-turn">Kırmızı</strong>
+        </div>
+        <button class="ludo-room-chip" id="ludo-room-code" type="button"><small>Oda</small><strong>------</strong><span>▣</span></button>
+        <span class="ludo-online-chip" id="ludo-online">♙ 0/2 oyuncu</span>
+        <button class="danger-button" id="ludo-start" type="button">Oyunu başlat</button>
+      </div>
+
+      <div class="ludo-play-area">
+        <p class="game-status" id="ludo-status" role="status">Oda oluştur veya kodla katıl</p>
+        <div class="dice-area ludo-dice-card">
+          <button class="dice" id="ludo-dice" type="button" aria-label="Zar at">⚀</button>
+          <div><strong id="dice-value">Zar at</strong><span id="ludo-dice-help">Sonra parlayan taşına dokun</span></div>
+          <div class="ludo-turn-timer"><strong id="ludo-timer">30s</strong><span>Süre</span></div>
+        </div>
+        <div class="ludo-last-roll" id="ludo-last-roll" hidden></div>
+        <div class="ludo-team-banner" id="ludo-team-banner" hidden>
+          <span><b>Takım A</b> Kırmızı + Sarı</span>
+          <span><b>Takım B</b> Yeşil + Mavi</span>
+        </div>
+        <div class="ludo-board-frame">
+          <div class="ludo-board" id="ludo-board" aria-label="Ludo tahtası"></div>
+          <span class="ludo-board-name red" id="ludo-board-name-red"></span>
+          <span class="ludo-board-name green" id="ludo-board-name-green"></span>
+          <span class="ludo-board-name yellow" id="ludo-board-name-yellow"></span>
+          <span class="ludo-board-name blue" id="ludo-board-name-blue"></span>
+        </div>
       </div>
       <div class="ludo-players" id="ludo-players"></div>
-      <p class="hint">6 atarak taşını oyuna çıkar. Rakibin taşını yakala ve dört taşını da merkeze ilk ulaştıran ol.</p>
+      <p class="hint">6 atarak taşını çıkar. Takım modunda karşılıklı renkler ortaktır; takım arkadaşları birbirini yiyemez ve 8 taşı ilk bitiren takım kazanır.</p>
     </section>
 
     <section class="panel" id="menu">
