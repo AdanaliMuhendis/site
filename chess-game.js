@@ -22,6 +22,9 @@ let selectedSquare = null;
 let orientation = "white";
 let busy = false;
 let syncing = false;
+let eventAbortController = null;
+let eventRoomCode = "";
+let eventReconnectTimer = null;
 
 function initials(name) {
   return name.split(/\s+/).slice(0, 2).map((part) => part[0] || "").join("").toUpperCase();
@@ -150,6 +153,10 @@ function applyState(nextState) {
 }
 
 function clearRoom() {
+  eventAbortController?.abort();
+  eventAbortController = null;
+  eventRoomCode = "";
+  clearTimeout(eventReconnectTimer);
   roomCode = "";
   state = null;
   game = new Chess();
@@ -182,6 +189,7 @@ async function requestRoom(path, body) {
   try {
     const result = await api.request(`/api/games/chess/${path}`, { method: "POST", body: JSON.stringify(body) });
     applyState(result.state);
+    startRealtime();
   } catch (error) {
     window.showMiniAppToast?.(error.message);
     statusElement.textContent = error.message;
@@ -192,13 +200,52 @@ async function sync(quiet = false) {
   if (!api?.available || !roomCode || busy || syncing) return;
   syncing = true;
   try {
-    const version = state?.version ?? 0;
-    const result = await api.request(`/api/games/chess/state?room=${encodeURIComponent(roomCode)}&since=${version}&wait=25`, { cache: "no-store" });
+    const result = await api.request(`/api/games/chess/state?room=${encodeURIComponent(roomCode)}`, { cache: "no-store" });
     if (!busy && (!state || result.state.version > state.version)) applyState(result.state);
+    startRealtime();
   } catch (error) {
     if (!quiet) window.showMiniAppToast?.(error.message);
     if (/bulunamadı/i.test(error.message)) clearRoom();
   } finally { syncing = false; }
+}
+
+async function startRealtime() {
+  if (!api?.available || !roomCode || eventAbortController) return;
+  const connectedRoom = roomCode;
+  const controller = new AbortController();
+  eventAbortController = controller;
+  eventRoomCode = connectedRoom;
+  clearTimeout(eventReconnectTimer);
+  try {
+    const response = await api.stream(
+      `/api/games/chess/events?room=${encodeURIComponent(connectedRoom)}`,
+      { signal: controller.signal },
+    );
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    while (!controller.signal.aborted) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true }).replace(/\r\n/g, "\n");
+      let boundary;
+      while ((boundary = buffer.indexOf("\n\n")) >= 0) {
+        const block = buffer.slice(0, boundary);
+        buffer = buffer.slice(boundary + 2);
+        const data = block.split("\n").find((line) => line.startsWith("data:"));
+        if (!data || roomCode !== connectedRoom) continue;
+        const payload = JSON.parse(data.slice(5));
+        if (payload.state && (!state || payload.state.version > state.version)) applyState(payload.state);
+      }
+    }
+  } catch (error) {
+    if (!controller.signal.aborted) console.warn("Satranç olay bağlantısı yenileniyor", error);
+  } finally {
+    if (eventAbortController === controller) {
+      eventAbortController = null;
+      if (roomCode === connectedRoom) eventReconnectTimer = setTimeout(startRealtime, 1000);
+    }
+  }
 }
 
 async function action(payload) {
@@ -246,4 +293,4 @@ document.getElementById("chess-reset")?.addEventListener("click", () => action({
 
 renderRoom();
 if (roomCode) sync();
-setInterval(() => sync(true), 1800);
+setInterval(() => sync(true), 10000);

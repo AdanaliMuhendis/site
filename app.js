@@ -99,10 +99,36 @@ async function apiRequest(path, options = {}) {
   return payload;
 }
 
+async function apiStream(path, options = {}) {
+  let initData = activeTelegramApp()?.initData;
+  if (!initData) {
+    const deadline = Date.now() + 2500;
+    while (!initData && Date.now() < deadline) {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      initData = activeTelegramApp()?.initData;
+    }
+  }
+  if (!initData) throw new Error("Mini App'i Telegram grubundaki bağlantıdan açın.");
+  const response = await fetch(`${API_BASE}${path}`, {
+    cache: "no-store",
+    ...options,
+    headers: {
+      Authorization: `tma ${initData}`,
+      ...options.headers,
+    },
+  });
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({}));
+    throw new Error(payload.message || "Gerçek zamanlı oyun bağlantısı kurulamadı.");
+  }
+  return response;
+}
+
 window.showMiniAppToast = showToast;
 window.miniAppHaptic = haptic;
 window.miniAppApi = {
   request: apiRequest,
+  stream: apiStream,
   get available() { return Boolean(activeTelegramApp()?.initData); },
 };
 

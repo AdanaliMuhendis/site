@@ -52,6 +52,9 @@ let lastAnimatedMoveId = "";
 let diceRolling = false;
 let animatedDiceRoll = 1;
 let pendingTimerState = null;
+let eventAbortController = null;
+let eventRoomCode = "";
+let eventReconnectTimer = null;
 
 function initials(name) {
   return name.split(/\s+/).slice(0, 2).map((part) => part[0] || "").join("").toUpperCase();
@@ -311,6 +314,7 @@ function render() {
 }
 
 function synchronizeServerClock(nextState, timing = {}) {
+  if (timing.preserveClock) return;
   if (Number.isFinite(nextState.server_time)) {
     const sentAt = Number.isFinite(timing.sentAt) ? timing.sentAt : Date.now() / 1000;
     const receivedAt = Number.isFinite(timing.receivedAt) ? timing.receivedAt : Date.now() / 1000;
@@ -351,6 +355,10 @@ async function transitionState(nextState, timing) {
 }
 
 function clearRoom() {
+  eventAbortController?.abort();
+  eventAbortController = null;
+  eventRoomCode = "";
+  clearTimeout(eventReconnectTimer);
   roomCode = "";
   state = null;
   sessionStorage.removeItem("alem-ludo-room");
@@ -383,6 +391,7 @@ async function roomRequest(path, body) {
     const sentAt = Date.now() / 1000;
     const result = await api.request(`/api/games/ludo/${path}`, { method: "POST", body: JSON.stringify(body) });
     applyState(result.state, { sentAt, receivedAt: Date.now() / 1000 });
+    startRealtime();
   } catch (error) {
     window.showMiniAppToast?.(error.message);
     statusElement.textContent = error.message;
@@ -394,14 +403,58 @@ async function sync(quiet = false) {
   syncing = true;
   try {
     const sentAt = Date.now() / 1000;
-    const version = state?.version ?? 0;
-    const result = await api.request(`/api/games/ludo/state?room=${encodeURIComponent(roomCode)}&since=${version}&wait=25`, { cache: "no-store" });
+    const result = await api.request(`/api/games/ludo/state?room=${encodeURIComponent(roomCode)}`, { cache: "no-store" });
     const timing = { sentAt, receivedAt: Date.now() / 1000 };
+    synchronizeServerClock(result.state, timing);
     if (!busy && (!state || result.state.version > state.version)) await transitionState(result.state, timing);
+    startRealtime();
   } catch (error) {
     if (!quiet) window.showMiniAppToast?.(error.message);
     if (/bulunamadı/i.test(error.message)) clearRoom();
   } finally { syncing = false; }
+}
+
+async function startRealtime() {
+  if (!api?.available || !roomCode || eventAbortController) return;
+  const connectedRoom = roomCode;
+  const controller = new AbortController();
+  eventAbortController = controller;
+  eventRoomCode = connectedRoom;
+  clearTimeout(eventReconnectTimer);
+  try {
+    const response = await api.stream(
+      `/api/games/ludo/events?room=${encodeURIComponent(connectedRoom)}`,
+      { signal: controller.signal },
+    );
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    while (!controller.signal.aborted) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true }).replace(/\r\n/g, "\n");
+      let boundary;
+      while ((boundary = buffer.indexOf("\n\n")) >= 0) {
+        const block = buffer.slice(0, boundary);
+        buffer = buffer.slice(boundary + 2);
+        const data = block.split("\n").find((line) => line.startsWith("data:"));
+        if (!data || roomCode !== connectedRoom) continue;
+        const payload = JSON.parse(data.slice(5));
+        if (payload.state && (!state || payload.state.version > state.version)) {
+          await transitionState(payload.state, { preserveClock: true });
+        }
+      }
+    }
+  } catch (error) {
+    if (!controller.signal.aborted) console.warn("Ludo olay bağlantısı yenileniyor", error);
+  } finally {
+    if (eventAbortController === controller) {
+      eventAbortController = null;
+      if (roomCode === connectedRoom) {
+        eventReconnectTimer = setTimeout(startRealtime, 1000);
+      }
+    }
+  }
 }
 
 async function action(payload) {
@@ -549,7 +602,7 @@ buildBoard();
 render();
 if (roomCode) sync();
 loadLeaderboard();
-setInterval(() => sync(true), 500);
+setInterval(() => sync(true), 10000);
 setInterval(renderTimer, 100);
 document.addEventListener("visibilitychange", () => {
   if (!document.hidden) sync(true);
