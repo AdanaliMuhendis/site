@@ -9,7 +9,6 @@ const roomCard = document.getElementById("chess-room-card");
 const roomCodeElement = document.getElementById("chess-room-code");
 const roomCountElement = document.getElementById("chess-room-count");
 const playersElement = document.getElementById("chess-players");
-const startButton = document.getElementById("chess-start");
 const createRow = document.querySelector("#chess-lobby .room-create-row");
 const pieces = {
   wp: "♙", wn: "♘", wb: "♗", wr: "♖", wq: "♕", wk: "♔",
@@ -63,7 +62,7 @@ function statusText() {
   if (!api?.available) return "Mini App'i Telegram içinden açın.";
   if (!roomCode) return "Yeni bir oda oluştur veya arkadaşının oda kodunu gir.";
   if (!state) return "Odaya bağlanıyor…";
-  if (!state.started) return state.players.length === 2 ? "Oyuncular hazır. Oda sahibi oyunu başlatabilir." : "İkinci oyuncu bekleniyor.";
+  if (!state.started) return state.players.length === 2 ? "Oyuncular tamamlandı. Oyun otomatik başlatılıyor…" : "İkinci oyuncu bekleniyor.";
   if (state.game_over) {
     if (state.result === "1-0") return `${playerName("white")} kazandı.`;
     if (state.result === "0-1") return `${playerName("black")} kazandı.`;
@@ -135,8 +134,6 @@ function renderRoom() {
   createRow.hidden = joined;
   roomCodeElement.textContent = roomCode || "------";
   roomCountElement.textContent = `${state?.players?.length || 0}/2 oyuncu`;
-  startButton.hidden = !joined || state.started || state.host_id !== state.you_id;
-  startButton.disabled = state?.players?.length !== 2;
   document.getElementById("chess-reset").disabled = !joined || !state.started || state.host_id !== state.you_id;
   renderPlayers();
   renderBoard();
@@ -161,7 +158,7 @@ function leaveRoom() {
 }
 
 async function requestRoom(path, body) {
-  if (!api?.available || busy) return;
+  if (!api || busy) return;
   busy = true;
   try {
     const result = await api.request(`/api/games/chess/${path}`, { method: "POST", body: JSON.stringify(body) });
@@ -223,7 +220,6 @@ roomCodeElement?.addEventListener("click", async () => {
   await navigator.clipboard.writeText(roomCode).catch(() => {});
   window.showMiniAppToast?.(`Oda kodu kopyalandı: ${roomCode}`);
 });
-startButton?.addEventListener("click", () => action({ action: "start" }));
 document.getElementById("chess-leave")?.addEventListener("click", leaveRoom);
 document.getElementById("chess-flip")?.addEventListener("click", () => { orientation = orientation === "white" ? "black" : "white"; renderBoard(); });
 document.getElementById("chess-reset")?.addEventListener("click", () => action({ action: "reset" }));

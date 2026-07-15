@@ -9,7 +9,6 @@ const roomPlayers = document.getElementById("ludo-room-players");
 const roomCard = document.getElementById("ludo-room-card");
 const roomCodeElement = document.getElementById("ludo-room-code");
 const onlineNote = document.getElementById("ludo-online");
-const startButton = document.getElementById("ludo-start");
 const createRow = document.querySelector("#ludo-lobby .room-create-row");
 const lobby = document.getElementById("ludo-lobby");
 const modeSelect = document.getElementById("ludo-mode");
@@ -113,7 +112,7 @@ function statusText() {
   if (!api?.available) return "Mini App'i Telegram içinden açın.";
   if (!roomCode) return "Oyuncu sayısını seçip oda oluştur veya bir oda koduyla katıl.";
   if (!state) return "Odaya bağlanıyor…";
-  if (!state.started) return state.players.length === state.required_players ? "Tüm oyuncular hazır. Oda sahibi başlatabilir." : `${state.required_players - state.players.length} oyuncu daha bekleniyor.`;
+  if (!state.started) return state.players.length === state.required_players ? "Oyuncular tamamlandı. Oyun otomatik başlatılıyor…" : `${state.required_players - state.players.length} oyuncu daha bekleniyor.`;
   if (state.winner_team) return `Takım ${state.winner_team} kazandı!`;
   if (state.winner_id) return `${state.players.find((player) => player.id === state.winner_id)?.name || "Oyuncu"} kazandı!`;
   const current = state.players.find((player) => player.id === state.turn_user_id);
@@ -279,8 +278,6 @@ function render() {
   const roomCodeText = roomCodeElement.querySelector("strong");
   if (roomCodeText) roomCodeText.textContent = roomCode || "------";
   onlineNote.textContent = joined ? `♙ ${state.players.length}/${state.required_players} oyuncu` : "♙ Oda yok";
-  startButton.hidden = !joined || state.started || state.host_id !== state.you_id;
-  startButton.disabled = !joined || state.players.length !== state.required_players;
   const current = state?.players?.find((player) => player.id === state.turn_user_id);
   const winner = state?.players?.find((player) => player.id === state.winner_id);
   const teamWinner = state?.winner_team ? `Takım ${state.winner_team} kazandı` : "";
@@ -336,7 +333,7 @@ function leaveRoom() {
 }
 
 async function roomRequest(path, body) {
-  if (!api?.available || busy) return;
+  if (!api || busy) return;
   busy = true;
   try {
     const result = await api.request(`/api/games/ludo/${path}`, { method: "POST", body: JSON.stringify(body) });
@@ -389,7 +386,6 @@ diceButton?.addEventListener("click", () => {
   diceButton.classList.add("rolling");
   action({ action: "roll" });
 });
-startButton?.addEventListener("click", () => action({ action: "start" }));
 modeSelect?.addEventListener("change", () => {
   const teams = modeSelect.value === "teams";
   if (teams) playerCountSelect.value = "4";

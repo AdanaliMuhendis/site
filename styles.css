@@ -1118,9 +1118,7 @@ select:focus {
 .ludo-match-hud {
   display: grid;
   grid-template-columns: auto minmax(120px, 1fr) auto auto;
-  grid-template-areas:
-    "exit turn room online"
-    ". start start .";
+  grid-template-areas: "exit turn room online";
   gap: 8px;
   margin-bottom: 12px;
   padding: 10px;
@@ -1198,12 +1196,6 @@ select:focus {
   color: #fff;
   font-size: 11px;
   font-weight: 900;
-}
-
-.ludo-match-hud > .danger-button {
-  grid-area: start;
-  justify-self: center;
-  width: min(100%, 260px);
 }
 
 .ludo-play-area {
@@ -1387,8 +1379,7 @@ select:focus {
     grid-template-columns: auto 1fr auto;
     grid-template-areas:
       "exit turn online"
-      "room room room"
-      "start start start";
+      "room room room";
   }
   .ludo-room-chip { width: 100%; }
   .ludo-create-row .room-join-form { grid-template-columns: minmax(0, 1fr) 88px; min-width: 0; }

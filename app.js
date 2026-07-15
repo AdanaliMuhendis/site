@@ -1,6 +1,10 @@
 const tg = window.Telegram?.WebApp;
 const API_BASE = "https://api.alemmuzik.com";
 
+function activeTelegramApp() {
+  return window.Telegram?.WebApp;
+}
+
 const links = {
   bot: "https://t.me/AlemMuzikBot",
   support: "https://t.me/QuantumQuillCoder",
@@ -50,15 +54,12 @@ const TV_CHANNELS = [
   ["TRT Haber", "https://tv-trthaber.medya.trt.com.tr/master_360.m3u8"],
   ["TRT Müzik", "https://tv-trtmuzik.medya.trt.com.tr/master.m3u8"],
   ["TRT Çocuk", "https://tv-trtcocuk.medya.trt.com.tr/master_720.m3u8"],
-  ["Tabii Spor", "https://beert7sqimrk0bfdupfgn6qew.medya.trt.com.tr/master.m3u8"],
   ["TV8", "https://tv8.daioncdn.net/tv8/tv8_360p.m3u8"],
   ["TV8,5", "https://rkhubpaomb.turknet.ercdn.net/fwjkgpasof/tv8bucuk/tv8bucuk.m3u8"],
   ["Beyaz TV", "https://beyaztv-live.daioncdn.net/beyaztv/beyaztv.m3u8"],
   ["Halk TV", "https://halktv-live.daioncdn.net/halktv/halktv_360p.m3u8"],
-  ["TV100", "https://tv100-live.daioncdn.net/tv100/tv100_360p.m3u8"],
   ["Ekol TV", "https://ekoltv-live.ercdn.net/ekoltv/ekoltv_360p.m3u8"],
   ["Minika GO", "https://rnttwmjcin.turknet.ercdn.net/lcpmvefbyo/minikago/minikago_480p.m3u8"],
-  ["Dream Türk", "https://live.duhnet.tv/S2/HLS_LIVE/dreamturknp/track_4_1250/playlist.m3u8"],
 ];
 
 const toast = document.getElementById("toast");
@@ -76,11 +77,19 @@ function haptic(style = "light") {
 }
 
 async function apiRequest(path, options = {}) {
-  if (!tg?.initData) throw new Error("Mini App'i Telegram grubundaki bağlantıdan açın.");
+  let initData = activeTelegramApp()?.initData;
+  if (!initData) {
+    const deadline = Date.now() + 2500;
+    while (!initData && Date.now() < deadline) {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      initData = activeTelegramApp()?.initData;
+    }
+  }
+  if (!initData) throw new Error("Mini App'i Telegram grubundaki bağlantıdan açın.");
   const response = await fetch(`${API_BASE}${path}`, {
     ...options,
     headers: {
-      Authorization: `tma ${tg.initData}`,
+      Authorization: `tma ${initData}`,
       ...(options.body ? { "Content-Type": "application/json" } : {}),
       ...options.headers,
     },
@@ -92,7 +101,10 @@ async function apiRequest(path, options = {}) {
 
 window.showMiniAppToast = showToast;
 window.miniAppHaptic = haptic;
-window.miniAppApi = { request: apiRequest, available: Boolean(tg?.initData) };
+window.miniAppApi = {
+  request: apiRequest,
+  get available() { return Boolean(activeTelegramApp()?.initData); },
+};
 
 function openLink(key) {
   const url = links[key];
