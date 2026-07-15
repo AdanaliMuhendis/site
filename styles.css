@@ -619,9 +619,36 @@ select:focus {
   font-size: clamp(7px, 2.3vw, 13px);
 }
 
-.ludo-cell.center {
-  border: 0;
-  background: conic-gradient(from 45deg, #48c98c 0 25%, #f2ce62 0 50%, #58a3eb 0 75%, #ed687a 0);
+.ludo-cell.goal-cell { border-color: transparent; }
+
+.ludo-center-goal {
+  position: relative;
+  z-index: 2;
+  grid-row: 7 / 10;
+  grid-column: 7 / 10;
+  overflow: hidden;
+  border: 1.5px solid #17232c;
+  background: #fff;
+  pointer-events: none;
+}
+
+.goal-sector { position: absolute; inset: 0; }
+.goal-sector.green { background: #24b85f; clip-path: polygon(0 0, 100% 0, 50% 50%); }
+.goal-sector.yellow { background: #f2d443; clip-path: polygon(100% 0, 100% 100%, 50% 50%); }
+.goal-sector.blue { background: #278bd5; clip-path: polygon(0 100%, 100% 100%, 50% 50%); }
+.goal-sector.red { background: #e33d43; clip-path: polygon(0 0, 50% 50%, 0 100%); }
+
+.goal-center-dot {
+  position: absolute;
+  z-index: 2;
+  top: 50%;
+  left: 50%;
+  width: 9%;
+  aspect-ratio: 1;
+  border: 1px solid #17232c;
+  border-radius: 50%;
+  background: #fff;
+  transform: translate(-50%, -50%);
 }
 
 .ludo-token {
@@ -1349,11 +1376,14 @@ select:focus {
 #ludo .ludo-cell.start-yellow::after { content: "↓"; color: #7b5c00; }
 #ludo .ludo-cell.start-blue::after { content: "←"; color: #073e70; }
 
-#ludo .ludo-cell.center {
-  background: conic-gradient(from 45deg, #24b85f 0 25%, #f2d443 0 50%, #278bd5 0 75%, #e33d43 0);
+#ludo .ludo-cell.goal-cell {
+  z-index: 3;
+  border-color: transparent;
+  background: transparent;
 }
 
 #ludo .ludo-token {
+  z-index: 5;
   min-width: 10px;
   max-width: 27px;
   border: 2px solid #fff;

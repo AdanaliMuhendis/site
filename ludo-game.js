@@ -87,10 +87,22 @@ function buildBoard() {
     }
     const homeColor = homeByCell.get(key(row, column));
     if (homeColor) cell.classList.add(`home-${homeColor}`);
-    if (row === 7 && column === 7) cell.classList.add("center");
+    if (row >= 6 && row <= 8 && column >= 6 && column <= 8) cell.classList.add("goal-cell");
     boardElement.append(cell);
     cells.set(key(row, column), cell);
   }
+  const goal = document.createElement("div");
+  goal.className = "ludo-center-goal";
+  goal.setAttribute("aria-hidden", "true");
+  ["green", "yellow", "blue", "red"].forEach((color) => {
+    const sector = document.createElement("span");
+    sector.className = `goal-sector ${color}`;
+    goal.append(sector);
+  });
+  const centerDot = document.createElement("i");
+  centerDot.className = "goal-center-dot";
+  goal.append(centerDot);
+  boardElement.append(goal);
 }
 
 function tokenPositionForProgress(player, tokenIndex, progress) {
