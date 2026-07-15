@@ -15,6 +15,7 @@ const modeSelect = document.getElementById("ludo-mode");
 const playerCountSelect = document.getElementById("ludo-player-count");
 const teamBanner = document.getElementById("ludo-team-banner");
 const timerElement = document.getElementById("ludo-timer");
+const timerLabelElement = document.getElementById("ludo-timer-label");
 const lastRollElement = document.getElementById("ludo-last-roll");
 const leaderboardElement = document.getElementById("ludo-leaderboard");
 const leaderboardRefresh = document.getElementById("ludo-leaderboard-refresh");
@@ -48,6 +49,8 @@ let syncing = false;
 let serverClockOffset = 0;
 let activeMove = null;
 let lastAnimatedMoveId = "";
+let diceRolling = false;
+let animatedDiceRoll = 1;
 
 function initials(name) {
   return name.split(/\s+/).slice(0, 2).map((part) => part[0] || "").join("").toUpperCase();
@@ -244,10 +247,12 @@ function renderBoardNames() {
 function renderTimer() {
   if (!state?.started || !state.turn_deadline || state.winner_id || state.winner_team) {
     timerElement.textContent = "--";
+    timerLabelElement.textContent = "Süre";
     return;
   }
   const serverNow = (Date.now() / 1000) + serverClockOffset;
   timerElement.textContent = `${Math.max(0, Math.ceil(state.turn_deadline - serverNow))}s`;
+  timerLabelElement.textContent = state.current_roll !== null ? "Hamle süresi" : "Zar süresi";
 }
 
 function renderLastRoll() {
@@ -285,9 +290,16 @@ function render() {
   turnElement.className = `turn-badge ${winner?.color || current?.color || ""}`;
   teamBanner.hidden = state?.mode !== "teams";
   statusElement.textContent = statusText();
-  diceButton.textContent = state?.current_roll ? diceFaces[state.current_roll - 1] : diceFaces[0];
-  diceValue.textContent = state?.current_roll ? `${state.current_roll} geldi` : "Zar at";
-  diceButton.disabled = busy || !state?.started || Boolean(state.winner_id || state.winner_team) || state.current_roll !== null || state.turn_user_id !== state.you_id;
+  const shownRoll = diceRolling ? animatedDiceRoll : (state?.current_roll ?? state?.last_roll ?? 1);
+  diceButton.textContent = diceFaces[shownRoll - 1];
+  diceValue.textContent = diceRolling
+    ? "Zar dönüyor…"
+    : state?.current_roll
+      ? `${state.current_roll} geldi`
+      : state?.last_roll
+        ? `Son zar: ${state.last_roll}`
+        : "Zar at";
+  diceButton.disabled = busy || diceRolling || !state?.started || Boolean(state.winner_id || state.winner_team) || state.current_roll !== null || state.turn_user_id !== state.you_id;
   renderTokens();
   renderGamePlayers();
   renderRoomPlayers();
@@ -367,6 +379,47 @@ async function action(payload) {
   finally { busy = false; render(); }
 }
 
+async function rollDice() {
+  if (
+    busy
+    || diceRolling
+    || !roomCode
+    || !state?.started
+    || state.current_roll !== null
+    || state.turn_user_id !== state.you_id
+  ) return;
+
+  busy = true;
+  diceRolling = true;
+  animatedDiceRoll = 1;
+  diceButton.classList.remove("rolling");
+  void diceButton.offsetWidth;
+  diceButton.classList.add("rolling");
+  render();
+  const faceTimer = setInterval(() => {
+    animatedDiceRoll = (animatedDiceRoll % 6) + 1;
+    diceButton.textContent = diceFaces[animatedDiceRoll - 1];
+  }, 70);
+
+  try {
+    const request = api.request("/api/games/ludo/action", {
+      method: "POST",
+      body: JSON.stringify({ room: roomCode, action: "roll" }),
+    });
+    const [result] = await Promise.all([request, wait(650)]);
+    await transitionState(result.state);
+    window.miniAppHaptic?.("medium");
+  } catch (error) {
+    window.showMiniAppToast?.(error.message);
+  } finally {
+    clearInterval(faceTimer);
+    diceRolling = false;
+    busy = false;
+    diceButton.classList.remove("rolling");
+    render();
+  }
+}
+
 document.getElementById("ludo-create")?.addEventListener("click", () => roomRequest("create", {
   players: Number(playerCountSelect.value),
   mode: modeSelect.value,
@@ -380,12 +433,7 @@ roomCodeElement?.addEventListener("click", async () => {
   window.showMiniAppToast?.(`Oda kodu kopyalandı: ${roomCode}`);
 });
 document.getElementById("ludo-leave")?.addEventListener("click", leaveRoom);
-diceButton?.addEventListener("click", () => {
-  diceButton.classList.remove("rolling");
-  void diceButton.offsetWidth;
-  diceButton.classList.add("rolling");
-  action({ action: "roll" });
-});
+diceButton?.addEventListener("click", rollDice);
 modeSelect?.addEventListener("change", () => {
   const teams = modeSelect.value === "teams";
   if (teams) playerCountSelect.value = "4";
@@ -457,5 +505,9 @@ buildBoard();
 render();
 if (roomCode) sync();
 loadLeaderboard();
-setInterval(() => sync(true), 1800);
+setInterval(() => sync(true), 500);
 setInterval(renderTimer, 250);
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) sync(true);
+});
+window.addEventListener("focus", () => sync(true));

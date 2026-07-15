@@ -106,6 +106,10 @@ window.miniAppApi = {
   get available() { return Boolean(activeTelegramApp()?.initData); },
 };
 
+// Telegram eski HTML'i önbellekten açsa bile artık kullanılmayan elle
+// başlatma düğmelerini ekrandan kesin olarak kaldır.
+["chess-start", "ludo-start"].forEach((id) => document.getElementById(id)?.remove());
+
 function openLink(key) {
   const url = links[key];
   if (!url) return;
