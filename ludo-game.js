@@ -52,7 +52,8 @@ let lastAnimatedMoveId = "";
 let diceRolling = false;
 let animatedDiceRoll = 1;
 let pendingTimerState = null;
-let eventAbortController = null;
+let realtimeSocket = null;
+let realtimeConnecting = false;
 let eventRoomCode = "";
 let eventReconnectTimer = null;
 
@@ -355,8 +356,9 @@ async function transitionState(nextState, timing) {
 }
 
 function clearRoom() {
-  eventAbortController?.abort();
-  eventAbortController = null;
+  realtimeSocket?.close();
+  realtimeSocket = null;
+  realtimeConnecting = false;
   eventRoomCode = "";
   clearTimeout(eventReconnectTimer);
   roomCode = "";
@@ -415,45 +417,40 @@ async function sync(quiet = false) {
 }
 
 async function startRealtime() {
-  if (!api?.available || !roomCode || eventAbortController) return;
+  if (!api?.available || !roomCode || realtimeSocket || realtimeConnecting) return;
+  realtimeConnecting = true;
   const connectedRoom = roomCode;
-  const controller = new AbortController();
-  eventAbortController = controller;
   eventRoomCode = connectedRoom;
   clearTimeout(eventReconnectTimer);
   try {
-    const response = await api.stream(
-      `/api/games/ludo/events?room=${encodeURIComponent(connectedRoom)}`,
-      { signal: controller.signal },
+    const ticket = await api.request("/api/realtime/ticket", { method: "POST" });
+    if (roomCode !== connectedRoom) return;
+    const socket = new WebSocket(
+      `wss://api.alemmuzik.com/api/games/ludo/socket?room=${encodeURIComponent(connectedRoom)}&ticket=${encodeURIComponent(ticket.ticket)}`,
     );
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = "";
-    while (!controller.signal.aborted) {
-      const { value, done } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true }).replace(/\r\n/g, "\n");
-      let boundary;
-      while ((boundary = buffer.indexOf("\n\n")) >= 0) {
-        const block = buffer.slice(0, boundary);
-        buffer = buffer.slice(boundary + 2);
-        const data = block.split("\n").find((line) => line.startsWith("data:"));
-        if (!data || roomCode !== connectedRoom) continue;
-        const payload = JSON.parse(data.slice(5));
+    realtimeSocket = socket;
+    let messageChain = Promise.resolve();
+    socket.addEventListener("message", (event) => {
+      messageChain = messageChain.then(async () => {
+        if (roomCode !== connectedRoom) return;
+        const payload = JSON.parse(event.data);
         if (payload.state && (!state || payload.state.version > state.version)) {
           await transitionState(payload.state, { preserveClock: true });
         }
+      }).catch((error) => console.warn("Ludo olayı işlenemedi", error));
+    });
+    socket.addEventListener("close", () => {
+      if (realtimeSocket === socket) {
+        realtimeSocket = null;
+        if (roomCode === connectedRoom) eventReconnectTimer = setTimeout(startRealtime, 1000);
       }
-    }
+    });
+    socket.addEventListener("error", () => socket.close());
   } catch (error) {
-    if (!controller.signal.aborted) console.warn("Ludo olay bağlantısı yenileniyor", error);
+    console.warn("Ludo olay bağlantısı yenileniyor", error);
+    if (roomCode === connectedRoom) eventReconnectTimer = setTimeout(startRealtime, 1000);
   } finally {
-    if (eventAbortController === controller) {
-      eventAbortController = null;
-      if (roomCode === connectedRoom) {
-        eventReconnectTimer = setTimeout(startRealtime, 1000);
-      }
-    }
+    realtimeConnecting = false;
   }
 }
 
