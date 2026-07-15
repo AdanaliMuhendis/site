@@ -51,6 +51,7 @@ let activeMove = null;
 let lastAnimatedMoveId = "";
 let diceRolling = false;
 let animatedDiceRoll = 1;
+let pendingTimerState = null;
 
 function initials(name) {
   return name.split(/\s+/).slice(0, 2).map((part) => part[0] || "").join("").toUpperCase();
@@ -166,14 +167,14 @@ function addTrailDot(player, tokenIndex, progress, step) {
 
 const wait = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 
-async function animateMove(nextState, move) {
+async function animateMove(nextState, move, timing) {
   const player = nextState.players.find((candidate) => candidate.id === move.player_id);
   if (!player) {
-    applyState(nextState);
+    applyState(nextState, timing);
     return;
   }
   clearMoveTrail(true);
-  setState(nextState);
+  setState(nextState, timing);
   activeMove = { playerId: player.id, tokenIndex: move.token, progress: move.from };
   render();
   const steps = move.from === -1
@@ -245,14 +246,15 @@ function renderBoardNames() {
 }
 
 function renderTimer() {
-  if (!state?.started || !state.turn_deadline || state.winner_id || state.winner_team) {
+  const timerState = pendingTimerState || state;
+  if (!timerState?.started || !timerState.turn_deadline || timerState.winner_id || timerState.winner_team) {
     timerElement.textContent = "--";
     timerLabelElement.textContent = "Süre";
     return;
   }
   const serverNow = (Date.now() / 1000) + serverClockOffset;
-  timerElement.textContent = `${Math.max(0, Math.ceil(state.turn_deadline - serverNow))}s`;
-  timerLabelElement.textContent = state.current_roll !== null ? "Hamle süresi" : "Zar süresi";
+  timerElement.textContent = `${Math.max(0, Math.ceil(timerState.turn_deadline - serverNow))}s`;
+  timerLabelElement.textContent = timerState.current_roll !== null ? "Hamle süresi" : "Zar süresi";
 }
 
 function renderLastRoll() {
@@ -308,33 +310,44 @@ function render() {
   renderLastRoll();
 }
 
-function setState(nextState) {
+function synchronizeServerClock(nextState, timing = {}) {
+  if (Number.isFinite(nextState.server_time)) {
+    const sentAt = Number.isFinite(timing.sentAt) ? timing.sentAt : Date.now() / 1000;
+    const receivedAt = Number.isFinite(timing.receivedAt) ? timing.receivedAt : Date.now() / 1000;
+    const serverWait = Number.isFinite(nextState.server_wait_seconds) ? nextState.server_wait_seconds : 0;
+    const networkRoundTrip = Math.max(0, (receivedAt - sentAt) - serverWait);
+    const estimatedClientResponseTime = receivedAt - (networkRoundTrip / 2);
+    serverClockOffset = nextState.server_time - estimatedClientResponseTime;
+  }
+}
+
+function setState(nextState, timing = {}) {
   state = nextState;
-  if (Number.isFinite(nextState.server_time)) serverClockOffset = nextState.server_time - (Date.now() / 1000);
+  synchronizeServerClock(nextState, timing);
   roomCode = nextState.room;
   sessionStorage.setItem("alem-ludo-room", roomCode);
 }
 
-function applyState(nextState) {
-  setState(nextState);
+function applyState(nextState, timing) {
+  setState(nextState, timing);
   render();
 }
 
-async function transitionState(nextState) {
+async function transitionState(nextState, timing) {
   const move = nextState?.last_move;
   if (!state) {
     lastAnimatedMoveId = move?.id || "";
-    applyState(nextState);
+    applyState(nextState, timing);
     return;
   }
   if (move?.id && move.id !== lastAnimatedMoveId) {
     lastAnimatedMoveId = move.id;
-    await animateMove(nextState, move);
+    await animateMove(nextState, move, timing);
     render();
     if (nextState.winner_id || nextState.winner_team) loadLeaderboard();
     return;
   }
-  applyState(nextState);
+  applyState(nextState, timing);
 }
 
 function clearRoom() {
@@ -367,8 +380,9 @@ async function roomRequest(path, body) {
   if (!api || busy) return;
   busy = true;
   try {
+    const sentAt = Date.now() / 1000;
     const result = await api.request(`/api/games/ludo/${path}`, { method: "POST", body: JSON.stringify(body) });
-    applyState(result.state);
+    applyState(result.state, { sentAt, receivedAt: Date.now() / 1000 });
   } catch (error) {
     window.showMiniAppToast?.(error.message);
     statusElement.textContent = error.message;
@@ -379,8 +393,11 @@ async function sync(quiet = false) {
   if (!api?.available || !roomCode || busy || syncing) return;
   syncing = true;
   try {
-    const result = await api.request(`/api/games/ludo/state?room=${encodeURIComponent(roomCode)}`);
-    if (!busy && (!state || result.state.version > state.version)) await transitionState(result.state);
+    const sentAt = Date.now() / 1000;
+    const version = state?.version ?? 0;
+    const result = await api.request(`/api/games/ludo/state?room=${encodeURIComponent(roomCode)}&since=${version}&wait=25`, { cache: "no-store" });
+    const timing = { sentAt, receivedAt: Date.now() / 1000 };
+    if (!busy && (!state || result.state.version > state.version)) await transitionState(result.state, timing);
   } catch (error) {
     if (!quiet) window.showMiniAppToast?.(error.message);
     if (/bulunamadı/i.test(error.message)) clearRoom();
@@ -391,8 +408,9 @@ async function action(payload) {
   if (!roomCode || busy) return;
   busy = true;
   try {
+    const sentAt = Date.now() / 1000;
     const result = await api.request("/api/games/ludo/action", { method: "POST", body: JSON.stringify({ room: roomCode, ...payload }) });
-    await transitionState(result.state);
+    await transitionState(result.state, { sentAt, receivedAt: Date.now() / 1000 });
     window.miniAppHaptic?.("medium");
   } catch (error) { window.showMiniAppToast?.(error.message); }
   finally { busy = false; render(); }
@@ -421,17 +439,24 @@ async function rollDice() {
   }, 70);
 
   try {
-    const request = api.request("/api/games/ludo/action", {
+    const animationStartedAt = Date.now();
+    const sentAt = Date.now() / 1000;
+    const result = await api.request("/api/games/ludo/action", {
       method: "POST",
       body: JSON.stringify({ room: roomCode, action: "roll" }),
     });
-    const [result] = await Promise.all([request, wait(2000)]);
-    await transitionState(result.state);
+    const receivedAt = Date.now() / 1000;
+    synchronizeServerClock(result.state, { sentAt, receivedAt });
+    pendingTimerState = result.state;
+    renderTimer();
+    await wait(Math.max(0, 2000 - (Date.now() - animationStartedAt)));
+    await transitionState(result.state, { sentAt, receivedAt });
     window.miniAppHaptic?.("medium");
   } catch (error) {
     window.showMiniAppToast?.(error.message);
   } finally {
     clearInterval(faceTimer);
+    pendingTimerState = null;
     diceRolling = false;
     busy = false;
     diceButton.classList.remove("rolling");
@@ -525,7 +550,7 @@ render();
 if (roomCode) sync();
 loadLeaderboard();
 setInterval(() => sync(true), 500);
-setInterval(renderTimer, 250);
+setInterval(renderTimer, 100);
 document.addEventListener("visibilitychange", () => {
   if (!document.hidden) sync(true);
 });

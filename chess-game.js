@@ -192,7 +192,8 @@ async function sync(quiet = false) {
   if (!api?.available || !roomCode || busy || syncing) return;
   syncing = true;
   try {
-    const result = await api.request(`/api/games/chess/state?room=${encodeURIComponent(roomCode)}`);
+    const version = state?.version ?? 0;
+    const result = await api.request(`/api/games/chess/state?room=${encodeURIComponent(roomCode)}&since=${version}&wait=25`, { cache: "no-store" });
     if (!busy && (!state || result.state.version > state.version)) applyState(result.state);
   } catch (error) {
     if (!quiet) window.showMiniAppToast?.(error.message);
