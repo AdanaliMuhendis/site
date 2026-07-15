@@ -45,6 +45,7 @@ const yardSlots = new Set(Object.values(definitions).flatMap((definition) => def
 let state = null;
 let roomCode = sessionStorage.getItem("alem-ludo-room") || "";
 let busy = false;
+let syncing = false;
 let serverClockOffset = 0;
 let activeMove = null;
 let lastAnimatedMoveId = "";
@@ -347,15 +348,15 @@ async function roomRequest(path, body) {
 }
 
 async function sync(quiet = false) {
-  if (!api?.available || !roomCode || busy) return;
-  busy = true;
+  if (!api?.available || !roomCode || busy || syncing) return;
+  syncing = true;
   try {
     const result = await api.request(`/api/games/ludo/state?room=${encodeURIComponent(roomCode)}`);
-    if (!state || result.state.version !== state.version) await transitionState(result.state);
+    if (!busy && (!state || result.state.version > state.version)) await transitionState(result.state);
   } catch (error) {
     if (!quiet) window.showMiniAppToast?.(error.message);
     if (/bulunamadı/i.test(error.message)) leaveRoom();
-  } finally { busy = false; render(); }
+  } finally { syncing = false; }
 }
 
 async function action(payload) {

@@ -12,7 +12,7 @@
   <meta property="og:image" content="https://adanalimuhendis.github.io/site/assets/alem-muzik-profile.png">
   <link rel="canonical" href="https://adanalimuhendis.github.io/site/">
   <title>Alem Müzik Mini App</title>
-  <link rel="stylesheet" href="./styles.css?v=20260715-2">
+  <link rel="stylesheet" href="./styles.css?v=20260715-3">
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
@@ -28,6 +28,7 @@
 
     <nav class="tabs" aria-label="Mini App bölümleri">
       <button class="tab active" data-tab="music"><span>♫</span>Müzik</button>
+      <button class="tab" data-tab="tv"><span>▣</span>TV</button>
       <button class="tab" data-tab="chess"><span>♞</span>Satranç</button>
       <button class="tab" data-tab="ludo"><span>⚄</span>Ludo</button>
       <button class="tab" data-tab="menu"><span>☰</span>Menü</button>
@@ -66,6 +67,27 @@
       <h3 class="subheading">Tüm radyo istasyonları</h3>
       <div class="station-grid" id="station-grid"></div>
       <p class="hint">Yayınlar üçüncü taraf radyo sunucularından gelir. Bir istasyon açılmazsa diğerini deneyin.</p>
+    </section>
+
+    <section class="panel" id="tv">
+      <div class="section-heading">
+        <div>
+          <p class="section-kicker">Uygulama içinde canlı yayın</p>
+          <h2>Televizyon</h2>
+        </div>
+        <span class="live-badge" id="tv-live-badge"><i></i> Hazır</span>
+      </div>
+      <article class="tv-player-card">
+        <div class="tv-now-playing">
+          <span>CANLI</span>
+          <strong id="tv-title">Bir kanal seç</strong>
+        </div>
+        <video id="tv-player" controls playsinline preload="none" poster="./assets/alem-muzik-profile.png"></video>
+        <button class="secondary-button" id="stop-tv" type="button">Yayını durdur</button>
+      </article>
+      <h3 class="subheading">TV kanalları</h3>
+      <div class="tv-grid" id="tv-grid"></div>
+      <p class="hint">TV yayını yalnızca uygulama içinde oynatılır. Yayın kaynağı geçici olarak kapalıysa başka bir kanal deneyin.</p>
     </section>
 
     <section class="panel" id="chess">
@@ -194,22 +216,13 @@
       </div>
       <div class="quick-actions">
         <button class="action primary" data-open="bot"><span>+</span>Botu aç</button>
-        <button class="action" data-open="support"><span>?</span>Destek</button>
+        <button class="action" data-open="support"><span>?</span>Owner</button>
         <button class="action" data-open="channel"><span>#</span>Kanal</button>
-      </div>
-      <h3 class="subheading">Komutlar</h3>
-      <div class="command-list">
-        <button data-copy="/oynat sanatçı - şarkı"><b>/oynat</b><span>Şarkı veya bağlantı oynat</span></button>
-        <button data-copy="/radyo"><b>/radyo</b><span>Radyo listesini aç</span></button>
-        <button data-copy="/tv"><b>/tv</b><span>TV listesini aç</span></button>
-        <button data-copy="/liste"><b>/liste</b><span>Sırayı görüntüle</span></button>
-        <button data-copy="/atla"><b>/atla</b><span>Sonraki parçaya geç</span></button>
-        <button data-copy="/indir link"><b>/indir</b><span>Sosyal medya indir</span></button>
       </div>
       <h3 class="subheading">Bağlantılar</h3>
       <div class="link-list">
         <button data-open="community">Topluluk kanalını aç</button>
-        <button data-open="support">Destek grubuna git</button>
+        <button data-open="support">Owner · @QuantumQuillCoder</button>
       </div>
     </section>
 
@@ -217,8 +230,8 @@
   </main>
 
   <script src="https://cdn.jsdelivr.net/npm/hls.js@1.6.16/dist/hls.min.js"></script>
-  <script src="./app.js?v=20260715-2"></script>
-  <script type="module" src="./chess-game.js?v=20260715-2"></script>
-  <script type="module" src="./ludo-game.js?v=20260715-2"></script>
+  <script src="./app.js?v=20260715-3"></script>
+  <script type="module" src="./chess-game.js?v=20260715-3"></script>
+  <script type="module" src="./ludo-game.js?v=20260715-3"></script>
 </body>
 </html>

@@ -3,7 +3,7 @@ const API_BASE = "https://api.alemmuzik.com";
 
 const links = {
   bot: "https://t.me/AlemMuzikBot",
-  support: "https://t.me/AlemSupport",
+  support: "https://t.me/QuantumQuillCoder",
   channel: "https://t.me/AlemMuzik",
   community: "https://t.me/Alemciyiz",
 };
@@ -43,6 +43,22 @@ const RADIO_STATIONS = [
   ["Kalp FM", "https://yayin.kalpfm.com:8080/stream?/;stream.mp3"],
   ["Kafa FM", "https://moondigitaledge2.radyotvonline.net/kafaradyo/playlist.m3u8"],
   ["Diyanet", "https://eustr76.mediatriple.net/videoonlylive/mtikoimxnztxlive/broadcast_5e3c1171d7d2a.smil/playlist.m3u8"],
+];
+
+const TV_CHANNELS = [
+  ["TRT 1", "https://tv-trt1.medya.trt.com.tr/master.m3u8"],
+  ["TRT Haber", "https://tv-trthaber.medya.trt.com.tr/master_360.m3u8"],
+  ["TRT Müzik", "https://tv-trtmuzik.medya.trt.com.tr/master.m3u8"],
+  ["TRT Çocuk", "https://tv-trtcocuk.medya.trt.com.tr/master_720.m3u8"],
+  ["Tabii Spor", "https://beert7sqimrk0bfdupfgn6qew.medya.trt.com.tr/master.m3u8"],
+  ["TV8", "https://tv8.daioncdn.net/tv8/tv8_360p.m3u8"],
+  ["TV8,5", "https://rkhubpaomb.turknet.ercdn.net/fwjkgpasof/tv8bucuk/tv8bucuk.m3u8"],
+  ["Beyaz TV", "https://beyaztv-live.daioncdn.net/beyaztv/beyaztv.m3u8"],
+  ["Halk TV", "https://halktv-live.daioncdn.net/halktv/halktv_360p.m3u8"],
+  ["TV100", "https://tv100-live.daioncdn.net/tv100/tv100_360p.m3u8"],
+  ["Ekol TV", "https://ekoltv-live.ercdn.net/ekoltv/ekoltv_360p.m3u8"],
+  ["Minika GO", "https://rnttwmjcin.turknet.ercdn.net/lcpmvefbyo/minikago/minikago_480p.m3u8"],
+  ["Dream Türk", "https://live.duhnet.tv/S2/HLS_LIVE/dreamturknp/track_4_1250/playlist.m3u8"],
 ];
 
 const toast = document.getElementById("toast");
@@ -102,7 +118,7 @@ document.querySelectorAll("[data-open]").forEach((button) => {
 });
 
 function activateTab(name, updateHash = true) {
-  if (!["music", "chess", "ludo", "menu"].includes(name)) return;
+  if (!["music", "tv", "chess", "ludo", "menu"].includes(name)) return;
   const tab = document.querySelector(`.tab[data-tab="${name}"]`);
   const panel = document.getElementById(name);
   if (!tab || !panel) return;
@@ -139,8 +155,13 @@ const trackTitle = document.getElementById("track-title");
 const liveBadge = document.querySelector(".live-badge");
 const stationGrid = document.getElementById("station-grid");
 const searchStatus = document.getElementById("music-search-status");
+const tvPlayer = document.getElementById("tv-player");
+const tvTitle = document.getElementById("tv-title");
+const tvGrid = document.getElementById("tv-grid");
+const tvLiveBadge = document.getElementById("tv-live-badge");
 let activeStation = null;
 let hls = null;
+let tvHls = null;
 let trackObjectUrl = null;
 
 function destroyHls() {
@@ -153,7 +174,13 @@ function releaseTrackObjectUrl() {
   trackObjectUrl = null;
 }
 
+function destroyTvHls() {
+  tvHls?.destroy();
+  tvHls = null;
+}
+
 async function playStream(url, name) {
+  tvPlayer?.pause();
   destroyHls();
   document.querySelectorAll(".station").forEach((item) => item.classList.remove("playing"));
   activeStation?.classList.add("playing");
@@ -180,6 +207,68 @@ async function playStream(url, name) {
     showToast("Yayın başlatılamadı; başka istasyon deneyin");
   }
 }
+
+async function playTvStream(url, name, button) {
+  destroyTvHls();
+  destroyHls();
+  player?.pause();
+  document.querySelectorAll(".tv-channel").forEach((item) => item.classList.remove("playing"));
+  button.classList.add("playing");
+  tvTitle.textContent = name;
+  tvLiveBadge.classList.add("connecting");
+  tvLiveBadge.classList.remove("on-air");
+  tvLiveBadge.lastChild.textContent = " Bağlanıyor";
+
+  if (window.Hls?.isSupported()) {
+    tvHls = new window.Hls({ enableWorker: true, lowLatencyMode: true });
+    tvHls.loadSource(url);
+    tvHls.attachMedia(tvPlayer);
+  } else {
+    tvPlayer.src = url;
+    tvPlayer.load();
+  }
+
+  try {
+    await tvPlayer.play();
+    haptic("medium");
+  } catch {
+    tvLiveBadge.classList.remove("connecting");
+    tvLiveBadge.lastChild.textContent = " Hazır";
+    showToast("TV yayını başlatılamadı; başka kanal deneyin");
+  }
+}
+
+TV_CHANNELS.forEach(([name, stream]) => {
+  const channel = document.createElement("button");
+  channel.type = "button";
+  channel.className = "tv-channel";
+  channel.innerHTML = `<span>▶</span><b>${name}</b><small>Canlı yayın</small>`;
+  channel.addEventListener("click", () => playTvStream(stream, name, channel));
+  tvGrid?.append(channel);
+});
+
+document.getElementById("stop-tv")?.addEventListener("click", () => {
+  destroyTvHls();
+  tvPlayer.pause();
+  tvPlayer.removeAttribute("src");
+  tvPlayer.load();
+  document.querySelectorAll(".tv-channel").forEach((item) => item.classList.remove("playing"));
+  tvTitle.textContent = "Bir kanal seç";
+  tvLiveBadge.classList.remove("connecting", "on-air");
+  tvLiveBadge.lastChild.textContent = " Hazır";
+});
+
+tvPlayer?.addEventListener("playing", () => {
+  tvLiveBadge.classList.remove("connecting");
+  tvLiveBadge.classList.add("on-air");
+  tvLiveBadge.lastChild.textContent = " Canlı";
+});
+
+tvPlayer?.addEventListener("error", () => {
+  tvLiveBadge.classList.remove("connecting", "on-air");
+  tvLiveBadge.lastChild.textContent = " Hata";
+  showToast("Bu TV yayını şu anda açılamıyor");
+});
 
 RADIO_STATIONS.forEach(([name, stream]) => {
   const station = document.createElement("button");

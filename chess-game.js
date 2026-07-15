@@ -22,6 +22,7 @@ let roomCode = sessionStorage.getItem("alem-chess-room") || "";
 let selectedSquare = null;
 let orientation = "white";
 let busy = false;
+let syncing = false;
 
 function initials(name) {
   return name.split(/\s+/).slice(0, 2).map((part) => part[0] || "").join("").toUpperCase();
@@ -172,15 +173,15 @@ async function requestRoom(path, body) {
 }
 
 async function sync(quiet = false) {
-  if (!api?.available || !roomCode || busy) return;
-  busy = true;
+  if (!api?.available || !roomCode || busy || syncing) return;
+  syncing = true;
   try {
     const result = await api.request(`/api/games/chess/state?room=${encodeURIComponent(roomCode)}`);
-    if (!state || result.state.version !== state.version) applyState(result.state);
+    if (!busy && (!state || result.state.version > state.version)) applyState(result.state);
   } catch (error) {
     if (!quiet) window.showMiniAppToast?.(error.message);
     if (/bulunamadı/i.test(error.message)) leaveRoom();
-  } finally { busy = false; }
+  } finally { syncing = false; }
 }
 
 async function action(payload) {
