@@ -337,11 +337,30 @@ async function transitionState(nextState) {
   applyState(nextState);
 }
 
-function leaveRoom() {
+function clearRoom() {
   roomCode = "";
   state = null;
   sessionStorage.removeItem("alem-ludo-room");
   render();
+}
+
+async function leaveRoom() {
+  if (!roomCode || busy) {
+    clearRoom();
+    return;
+  }
+  busy = true;
+  try {
+    await api.request("/api/games/ludo/action", {
+      method: "POST",
+      body: JSON.stringify({ room: roomCode, action: "leave" }),
+    });
+  } catch (error) {
+    window.showMiniAppToast?.(error.message);
+  } finally {
+    busy = false;
+    clearRoom();
+  }
 }
 
 async function roomRequest(path, body) {
@@ -364,7 +383,7 @@ async function sync(quiet = false) {
     if (!busy && (!state || result.state.version > state.version)) await transitionState(result.state);
   } catch (error) {
     if (!quiet) window.showMiniAppToast?.(error.message);
-    if (/bulunamadı/i.test(error.message)) leaveRoom();
+    if (/bulunamadı/i.test(error.message)) clearRoom();
   } finally { syncing = false; }
 }
 
@@ -406,7 +425,7 @@ async function rollDice() {
       method: "POST",
       body: JSON.stringify({ room: roomCode, action: "roll" }),
     });
-    const [result] = await Promise.all([request, wait(650)]);
+    const [result] = await Promise.all([request, wait(2000)]);
     await transitionState(result.state);
     window.miniAppHaptic?.("medium");
   } catch (error) {

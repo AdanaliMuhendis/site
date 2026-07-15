@@ -690,14 +690,14 @@ select:focus {
 }
 
 .dice.rolling {
-  animation: dice-roll-3d 650ms cubic-bezier(.2,.72,.25,1);
+  animation: dice-roll-3d 2s cubic-bezier(.2,.72,.25,1);
 }
 
 @keyframes dice-roll-3d {
   0% { transform: perspective(380px) rotateX(0) rotateY(0) rotateZ(0) scale(1); filter: brightness(1); }
-  28% { transform: perspective(380px) rotateX(150deg) rotateY(110deg) rotateZ(45deg) scale(.82); filter: brightness(1.25); }
-  62% { transform: perspective(380px) rotateX(335deg) rotateY(290deg) rotateZ(155deg) scale(.9); filter: brightness(.9); }
-  100% { transform: perspective(380px) rotateX(720deg) rotateY(540deg) rotateZ(360deg) scale(1); filter: brightness(1); }
+  28% { transform: perspective(380px) rotateX(510deg) rotateY(390deg) rotateZ(135deg) scale(.82); filter: brightness(1.25); }
+  62% { transform: perspective(380px) rotateX(1055deg) rotateY(870deg) rotateZ(475deg) scale(.9); filter: brightness(.9); }
+  100% { transform: perspective(380px) rotateX(1800deg) rotateY(1440deg) rotateZ(1080deg) scale(1); filter: brightness(1); }
 }
 
 .dice-area strong,

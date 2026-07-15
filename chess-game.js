@@ -149,12 +149,31 @@ function applyState(nextState) {
   renderRoom();
 }
 
-function leaveRoom() {
+function clearRoom() {
   roomCode = "";
   state = null;
   game = new Chess();
   sessionStorage.removeItem("alem-chess-room");
   renderRoom();
+}
+
+async function leaveRoom() {
+  if (!roomCode || busy) {
+    clearRoom();
+    return;
+  }
+  busy = true;
+  try {
+    await api.request("/api/games/chess/action", {
+      method: "POST",
+      body: JSON.stringify({ room: roomCode, action: "leave" }),
+    });
+  } catch (error) {
+    window.showMiniAppToast?.(error.message);
+  } finally {
+    busy = false;
+    clearRoom();
+  }
 }
 
 async function requestRoom(path, body) {
@@ -177,7 +196,7 @@ async function sync(quiet = false) {
     if (!busy && (!state || result.state.version > state.version)) applyState(result.state);
   } catch (error) {
     if (!quiet) window.showMiniAppToast?.(error.message);
-    if (/bulunamadı/i.test(error.message)) leaveRoom();
+    if (/bulunamadı/i.test(error.message)) clearRoom();
   } finally { syncing = false; }
 }
 
