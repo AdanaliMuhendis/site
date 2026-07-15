@@ -17,6 +17,8 @@ const playerCountSelect = document.getElementById("ludo-player-count");
 const teamBanner = document.getElementById("ludo-team-banner");
 const timerElement = document.getElementById("ludo-timer");
 const lastRollElement = document.getElementById("ludo-last-roll");
+const leaderboardElement = document.getElementById("ludo-leaderboard");
+const leaderboardRefresh = document.getElementById("ludo-leaderboard-refresh");
 const boardNames = Object.fromEntries(["red", "green", "yellow", "blue"].map((color) => [color, document.getElementById(`ludo-board-name-${color}`)]));
 
 const track = [
@@ -44,6 +46,8 @@ let state = null;
 let roomCode = sessionStorage.getItem("alem-ludo-room") || "";
 let busy = false;
 let serverClockOffset = 0;
+let activeMove = null;
+let lastAnimatedMoveId = "";
 
 function initials(name) {
   return name.split(/\s+/).slice(0, 2).map((part) => part[0] || "").join("").toUpperCase();
@@ -81,12 +85,20 @@ function buildBoard() {
   }
 }
 
-function tokenPosition(player, tokenIndex) {
+function tokenPositionForProgress(player, tokenIndex, progress) {
   const definition = definitions[player.color];
-  const progress = player.tokens[tokenIndex];
   if (progress === -1) return definition.yard[tokenIndex];
   if (progress < 52) return track[(player.offset + progress) % 52];
   return definition.home[progress - 52];
+}
+
+function tokenPosition(player, tokenIndex) {
+  const animatedProgress = activeMove
+    && activeMove.playerId === player.id
+    && activeMove.tokenIndex === tokenIndex
+    ? activeMove.progress
+    : player.tokens[tokenIndex];
+  return tokenPositionForProgress(player, tokenIndex, animatedProgress);
 }
 
 function tokenLayout(index, count) {
@@ -130,6 +142,51 @@ function renderTokens() {
       cell.append(token);
     });
   });
+}
+
+function clearMoveTrail(immediate = false) {
+  boardElement.querySelectorAll(".ludo-trail-dot").forEach((dot) => {
+    if (immediate) dot.remove();
+    else dot.classList.add("leaving");
+  });
+  if (!immediate) setTimeout(() => boardElement.querySelectorAll(".ludo-trail-dot.leaving").forEach((dot) => dot.remove()), 260);
+}
+
+function addTrailDot(player, tokenIndex, progress, step) {
+  const cell = cells.get(key(...tokenPositionForProgress(player, tokenIndex, progress)));
+  if (!cell) return;
+  const dot = document.createElement("span");
+  dot.className = `ludo-trail-dot ${player.color}`;
+  dot.style.setProperty("--trail-delay", `${step * 15}ms`);
+  cell.append(dot);
+}
+
+const wait = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
+
+async function animateMove(nextState, move) {
+  const player = nextState.players.find((candidate) => candidate.id === move.player_id);
+  if (!player) {
+    applyState(nextState);
+    return;
+  }
+  clearMoveTrail(true);
+  setState(nextState);
+  activeMove = { playerId: player.id, tokenIndex: move.token, progress: move.from };
+  render();
+  const steps = move.from === -1
+    ? [0]
+    : Array.from({ length: Math.max(0, move.to - move.from) }, (_, index) => move.from + index + 1);
+  for (let index = 0; index < steps.length; index += 1) {
+    const progress = steps[index];
+    activeMove.progress = progress;
+    if (index < steps.length - 1) addTrailDot(player, move.token, progress, index);
+    renderTokens();
+    window.miniAppHaptic?.("light");
+    await wait(175);
+  }
+  activeMove = null;
+  renderTokens();
+  clearMoveTrail(false);
 }
 
 function renderGamePlayers() {
@@ -241,12 +298,33 @@ function render() {
   renderLastRoll();
 }
 
-function applyState(nextState) {
+function setState(nextState) {
   state = nextState;
   if (Number.isFinite(nextState.server_time)) serverClockOffset = nextState.server_time - (Date.now() / 1000);
   roomCode = nextState.room;
   sessionStorage.setItem("alem-ludo-room", roomCode);
+}
+
+function applyState(nextState) {
+  setState(nextState);
   render();
+}
+
+async function transitionState(nextState) {
+  const move = nextState?.last_move;
+  if (!state) {
+    lastAnimatedMoveId = move?.id || "";
+    applyState(nextState);
+    return;
+  }
+  if (move?.id && move.id !== lastAnimatedMoveId) {
+    lastAnimatedMoveId = move.id;
+    await animateMove(nextState, move);
+    render();
+    if (nextState.winner_id || nextState.winner_team) loadLeaderboard();
+    return;
+  }
+  applyState(nextState);
 }
 
 function leaveRoom() {
@@ -273,7 +351,7 @@ async function sync(quiet = false) {
   busy = true;
   try {
     const result = await api.request(`/api/games/ludo/state?room=${encodeURIComponent(roomCode)}`);
-    if (!state || result.state.version !== state.version) applyState(result.state);
+    if (!state || result.state.version !== state.version) await transitionState(result.state);
   } catch (error) {
     if (!quiet) window.showMiniAppToast?.(error.message);
     if (/bulunamadı/i.test(error.message)) leaveRoom();
@@ -285,7 +363,7 @@ async function action(payload) {
   busy = true;
   try {
     const result = await api.request("/api/games/ludo/action", { method: "POST", body: JSON.stringify({ room: roomCode, ...payload }) });
-    applyState(result.state);
+    await transitionState(result.state);
     window.miniAppHaptic?.("medium");
   } catch (error) { window.showMiniAppToast?.(error.message); }
   finally { busy = false; render(); }
@@ -317,8 +395,70 @@ modeSelect?.addEventListener("change", () => {
   playerCountSelect.disabled = teams;
 });
 
+function leaderboardAvatar(player) {
+  const avatar = document.createElement(player.photo_url ? "img" : "span");
+  avatar.className = "leaderboard-avatar";
+  if (player.photo_url) {
+    avatar.src = player.photo_url;
+    avatar.alt = "";
+    avatar.referrerPolicy = "no-referrer";
+  } else avatar.textContent = initials(player.name || "O");
+  return avatar;
+}
+
+function renderLeaderboard(players, youId) {
+  leaderboardElement.replaceChildren();
+  if (!players.length) {
+    const empty = document.createElement("p");
+    empty.className = "leaderboard-empty";
+    empty.textContent = "İlk oyun tamamlandığında sıralama burada oluşacak.";
+    leaderboardElement.append(empty);
+    return;
+  }
+  players.slice(0, 20).forEach((player) => {
+    const row = document.createElement("div");
+    row.className = `leaderboard-row${player.id === youId ? " you" : ""}`;
+    const rank = document.createElement("strong");
+    rank.className = "leaderboard-rank";
+    rank.textContent = player.rank <= 3 ? ["🥇", "🥈", "🥉"][player.rank - 1] : `${player.rank}.`;
+    const identity = document.createElement("div");
+    identity.className = "leaderboard-player";
+    const names = document.createElement("div");
+    const name = document.createElement("b");
+    name.textContent = `${player.name}${player.id === youId ? " (Sen)" : ""}`;
+    const details = document.createElement("span");
+    details.textContent = `${player.games} oyun · ${player.wins} galibiyet`;
+    names.append(name, details);
+    identity.append(leaderboardAvatar(player), names);
+    const points = document.createElement("strong");
+    points.className = "leaderboard-points";
+    points.innerHTML = `${player.points}<small>puan</small>`;
+    row.append(rank, identity, points);
+    leaderboardElement.append(row);
+  });
+}
+
+async function loadLeaderboard() {
+  if (!api?.available || !leaderboardElement) return;
+  leaderboardRefresh.disabled = true;
+  try {
+    const result = await api.request("/api/games/ludo/leaderboard");
+    renderLeaderboard(result.players || [], result.you_id);
+  } catch (error) {
+    const empty = document.createElement("p");
+    empty.className = "leaderboard-empty";
+    empty.textContent = error.message;
+    leaderboardElement.replaceChildren(empty);
+  } finally {
+    leaderboardRefresh.disabled = false;
+  }
+}
+
+leaderboardRefresh?.addEventListener("click", loadLeaderboard);
+
 buildBoard();
 render();
 if (roomCode) sync();
+loadLeaderboard();
 setInterval(() => sync(true), 1800);
 setInterval(renderTimer, 250);

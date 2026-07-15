@@ -1,15 +1,15 @@
 :root {
   color-scheme: dark;
-  --bg: #071015;
-  --panel: rgba(14, 26, 32, 0.88);
-  --panel-strong: rgba(18, 38, 45, 0.96);
-  --text: #f4fbff;
-  --muted: #9fb4bd;
-  --cyan: #48e7ff;
-  --green: #41f0a6;
-  --gold: #f1c96b;
-  --red: #ff647c;
-  --line: rgba(255, 255, 255, 0.12);
+  --bg: #06142b;
+  --panel: rgba(10, 29, 54, 0.94);
+  --panel-strong: rgba(14, 40, 69, 0.98);
+  --text: #ffffff;
+  --muted: #c7d9e5;
+  --cyan: #5eeeff;
+  --green: #55f5a9;
+  --gold: #ffd568;
+  --red: #ff7189;
+  --line: rgba(166, 222, 255, 0.24);
   --shadow: 0 22px 70px rgba(0, 0, 0, 0.42);
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
@@ -23,10 +23,12 @@ body {
   margin: 0;
   min-height: 100%;
   background:
-    radial-gradient(circle at 18% 5%, rgba(72, 231, 255, 0.18), transparent 34%),
-    radial-gradient(circle at 78% 12%, rgba(65, 240, 166, 0.12), transparent 28%),
-    linear-gradient(160deg, #071015 0%, #0b161b 48%, #061115 100%);
+    radial-gradient(circle at 10% 4%, rgba(37, 211, 255, 0.34), transparent 34%),
+    radial-gradient(circle at 88% 10%, rgba(170, 72, 255, 0.28), transparent 32%),
+    radial-gradient(circle at 52% 72%, rgba(35, 238, 151, 0.16), transparent 38%),
+    linear-gradient(155deg, #06142b 0%, #10284a 52%, #07162f 100%);
   color: var(--text);
+  overflow-x: hidden;
 }
 
 body {
@@ -51,7 +53,7 @@ button:disabled {
 }
 
 .app-shell {
-  width: min(720px, 100%);
+  width: min(820px, 100%);
   margin: 0 auto;
 }
 
@@ -386,12 +388,16 @@ select:focus {
 }
 
 .primary-button {
-  border-color: rgba(72, 231, 255, 0.45);
-  background: linear-gradient(135deg, rgba(72, 231, 255, 0.27), rgba(65, 240, 166, 0.2));
+  border-color: #74efff;
+  background: linear-gradient(135deg, #48dfff, #4af0a1);
+  color: #06172a;
+  box-shadow: 0 5px 16px rgba(44, 224, 229, .2);
 }
 
 .secondary-button {
-  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(158, 220, 255, .38);
+  background: #173b5a;
+  color: #fff;
 }
 
 .danger-button {
@@ -1380,4 +1386,191 @@ select:focus {
   .ludo-create-row .room-code-input { width: 100%; min-width: 0; }
   .ludo-board-frame { width: 100%; padding: 5px; border-width: 4px; border-radius: 16px; }
   #ludo .ludo-board { width: 100%; }
+}
+
+/* 2026 canlı görünüm ve Ludo ligi */
+.hero {
+  border-color: rgba(105, 224, 255, .38);
+  background:
+    linear-gradient(125deg, rgba(35, 202, 255, .24), rgba(143, 67, 255, .2) 58%, rgba(52, 240, 161, .14)),
+    #0d2947;
+}
+
+.tabs {
+  border-color: rgba(125, 218, 255, .32);
+  background: rgba(5, 22, 45, .96);
+}
+
+.tab { color: #c7d9e5; }
+.tab.active {
+  border-color: #56e6ff;
+  background: linear-gradient(145deg, #1f7797, #275b7b);
+  color: #fff;
+  box-shadow: inset 0 0 16px rgba(91, 239, 255, .16);
+}
+
+.panel {
+  border-color: rgba(132, 213, 255, .3);
+  background:
+    linear-gradient(155deg, rgba(20, 59, 95, .56), rgba(10, 29, 54, .72)),
+    var(--panel);
+}
+
+.summary,
+.hint,
+.search-status,
+.stream-form label,
+.ludo-toolbar label,
+.station span,
+.command-list span {
+  color: #d4e4ed;
+}
+
+input,
+select {
+  border-color: rgba(145, 216, 255, .4);
+  background: #071d35;
+  color: #fff;
+}
+
+input::placeholder { color: #aebfca; opacity: 1; }
+
+#ludo {
+  background:
+    radial-gradient(circle at 12% 8%, rgba(0, 199, 255, .28), transparent 31%),
+    radial-gradient(circle at 88% 14%, rgba(164, 70, 255, .24), transparent 30%),
+    linear-gradient(165deg, #092d53, #06192f 56%, #102a4a);
+}
+
+.ludo-play-area {
+  border-color: #386b92;
+  background: linear-gradient(165deg, rgba(7, 32, 59, .97), rgba(10, 24, 43, .97));
+}
+
+#ludo .game-status {
+  border-color: rgba(104, 219, 255, .46);
+  background: #0d3554;
+  color: #fff;
+  box-shadow: inset 4px 0 0 #55eaff;
+}
+
+.ludo-board-frame {
+  width: min(100%, 680px);
+  border-color: #ffd431;
+  background: linear-gradient(145deg, #ffe45c, #bd7414);
+  box-shadow: 0 9px 0 #65410f, 0 22px 50px rgba(0, 0, 0, .46), 0 0 28px rgba(255, 208, 49, .18);
+}
+
+#ludo .ludo-cell.yard-red { background: #f02f4e; }
+#ludo .ludo-cell.yard-green { background: #16c96b; }
+#ludo .ludo-cell.yard-yellow { background: #ffdc31; }
+#ludo .ludo-cell.yard-blue { background: #168ee8; }
+#ludo .ludo-cell.home-red, #ludo .ludo-cell.start-red { background: #f02f4e; }
+#ludo .ludo-cell.home-green, #ludo .ludo-cell.start-green { background: #16c96b; }
+#ludo .ludo-cell.home-yellow, #ludo .ludo-cell.start-yellow { background: #ffdc31; }
+#ludo .ludo-cell.home-blue, #ludo .ludo-cell.start-blue { background: #168ee8; }
+
+#ludo .ludo-token {
+  max-width: 31px;
+  border-width: 3px;
+  box-shadow: 0 3px 5px #000, 0 0 0 2px rgba(0,0,0,.7), inset 0 3px 3px rgba(255,255,255,.4);
+  transition: left 140ms ease, top 140ms ease, transform 140ms ease;
+}
+
+.ludo-trail-dot {
+  position: absolute;
+  z-index: 6;
+  top: 50%;
+  left: 50%;
+  width: clamp(5px, 1.35vw, 9px);
+  aspect-ratio: 1;
+  border: 1px solid #fff;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 0 2px rgba(0,0,0,.34), 0 0 9px currentColor;
+  transform: translate(-50%, -50%);
+  animation: trail-pop 170ms ease-out both;
+  animation-delay: var(--trail-delay, 0ms);
+  pointer-events: none;
+}
+
+.ludo-trail-dot.red { color: #ff284d; }
+.ludo-trail-dot.green { color: #00d878; }
+.ludo-trail-dot.yellow { color: #ffc400; }
+.ludo-trail-dot.blue { color: #078cff; }
+.ludo-trail-dot.leaving { animation: trail-away 240ms ease-in forwards; }
+
+@keyframes trail-pop {
+  from { opacity: 0; transform: translate(-50%, -50%) scale(.35); }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+@keyframes trail-away {
+  to { opacity: 0; transform: translate(-50%, -50%) scale(.15); }
+}
+
+.ludo-leaderboard {
+  margin-top: 14px;
+  padding: 13px;
+  border: 1px solid rgba(255, 210, 83, .48);
+  border-radius: 17px;
+  background: linear-gradient(145deg, #102f52, #0a213d);
+  box-shadow: 0 12px 30px rgba(0,0,0,.22);
+}
+
+.leaderboard-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.leaderboard-heading small {
+  color: #7fefff;
+  font-weight: 900;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.leaderboard-heading h3 { margin: 2px 0 0; font-size: 18px; }
+.leaderboard-heading .secondary-button { min-height: 34px; padding: 0 11px; }
+.leaderboard-note { margin: 8px 0 10px; color: #d4e4ed; font-size: 10px; }
+.leaderboard-list { display: grid; gap: 6px; }
+
+.leaderboard-row {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 53px;
+  padding: 7px 9px;
+  border: 1px solid rgba(137, 205, 244, .25);
+  border-radius: 12px;
+  background: rgba(5, 19, 36, .72);
+}
+
+.leaderboard-row.you {
+  border-color: #54eaff;
+  background: linear-gradient(100deg, rgba(36, 171, 207, .28), rgba(20, 69, 105, .66));
+}
+
+.leaderboard-rank { color: #ffd65c; text-align: center; font-size: 17px; }
+.leaderboard-player { display: flex; align-items: center; min-width: 0; gap: 8px; }
+.leaderboard-avatar { display: grid; place-items: center; flex: 0 0 34px; width: 34px; height: 34px; border: 2px solid #73e9ff; border-radius: 50%; background: #1f5f80; color: #fff; object-fit: cover; font-size: 10px; font-weight: 900; }
+.leaderboard-player > div { min-width: 0; }
+.leaderboard-player b, .leaderboard-player span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.leaderboard-player b { color: #fff; font-size: 12px; }
+.leaderboard-player span { margin-top: 2px; color: #bfd3df; font-size: 9px; }
+.leaderboard-points { color: #ffe06c; text-align: right; font-size: 17px; }
+.leaderboard-points small { display: block; color: #bcd0dd; font-size: 8px; font-weight: 800; text-transform: uppercase; }
+.leaderboard-empty { margin: 8px 0 2px; color: #d5e4ec; text-align: center; font-size: 11px; }
+
+@media (max-width: 600px) {
+  #ludo.panel { margin-right: -7px; margin-left: -7px; padding-right: 8px; padding-left: 8px; }
+  #ludo * { min-width: 0; }
+  .ludo-play-area { padding-right: 4px; padding-left: 4px; }
+  .ludo-board-frame { width: 100%; }
+  .ludo-create-row .room-join-form { grid-template-columns: 1fr; }
+  .ludo-create-row .room-join-form .secondary-button { width: 100%; }
+  .leaderboard-heading { align-items: flex-start; flex-wrap: wrap; }
 }
